@@ -1,0 +1,6 @@
+# Task
+1. There is a strange bug in the game, where when you play at A3 at the start of the game, pass sound is played and the opponent AI plays his turn. Didn't check other illegal squares, but a1 and a2 play simple error sound. It maybe related to pass button being in the same place as A3 cell accidentally, but I am blind, so I can't check it. Passing should be illegal if you have legal moves.
+2. When you place a piece on a square, it should play the disk sound, than play the sounds of each flipping disk with black.wav or white.wav with the pitch and pan formula i provided in the code, i hope it's not lost in the rust implementation. Than when AI plays, it should play the disk sound and the flips.
+3. If the alpha beta algorythm supports rating best moves, you can make screenreader comment when human moves, like "oops! too bad move!", or "awesome!!!", or "well, not bad!!!" or do however you want and sounds great.
+4. The aria labels of the squares should have the coordinates (like A1) and it's piece color or nothing. E.g. d3 black, a1.
+5. Moves should be announced something similar like: "d3 black placed, flipped 4 disks". When AI thinks, screenreader says a random phrase from 10-15 like "let me think...", and AI moves are announced from the first person perspective, unless not 2 AI players, then 3rd person.
