@@ -2,6 +2,12 @@ use wasm_bindgen::prelude::*;
 use crate::ai_utils::AIUtils;
 
 #[wasm_bindgen]
+pub struct AIMove {
+    pub cell_index: i32,
+    pub score: i32,
+}
+
+#[wasm_bindgen]
 pub struct AlphaBetaPlayer {
     pub depth: usize,
 }
@@ -16,13 +22,12 @@ impl AlphaBetaPlayer {
     }
 
     #[wasm_bindgen]
-    pub fn choose_move(&self, board: &[u8], player: u8) -> i32 {
-        let (_, best_move) = self.maxv(board, player, i32::MIN, i32::MAX, self.depth);
+    pub fn choose_move(&self, board: &[u8], player: u8) -> AIMove {
+        let (score, best_move) = self.maxv(board, player, i32::MIN, i32::MAX, self.depth);
 
-        if let Some(m) = best_move {
-            m as i32
-        } else {
-            -1
+        AIMove {
+            cell_index: best_move.map(|m| m as i32).unwrap_or(-1),
+            score,
         }
     }
 

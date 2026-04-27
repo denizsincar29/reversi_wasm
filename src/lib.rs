@@ -3,6 +3,7 @@ pub mod board;
 pub mod ai_utils;
 pub mod alpha_beta;
 pub mod minimax;
+pub mod rules_validation;
 
 use wasm_bindgen::prelude::*;
 
@@ -47,7 +48,8 @@ mod tests {
         assert!(legal_moves.contains(&19), "D3 should be legal (flips D4)");
         
         // Make the move and verify flip
-        let board = board.apply_move_js(1, 2, 3);
+        let res = board.apply_move_js(1, 2, 3);
+        let board = res.board();
         let grid = board.get_grid();
         
         assert_eq!(grid[19], 1, "D3 should be Black");
@@ -69,12 +71,14 @@ mod tests {
     #[test]
     fn test_rules_turn_alternation() {
         // Rule: Turn switches after each move
-        let mut board = Board::new();
+        let board = Board::new();
         
         assert_eq!(board.get_turn(), 1);
-        board = board.apply_move_js(1, 2, 3);
+        let res = board.apply_move_js(1, 2, 3);
+        let board = res.board();
         assert_eq!(board.get_turn(), 2);
-        board = board.apply_move_js(2, 2, 2);
+        let res = board.apply_move_js(2, 2, 2);
+        let board = res.board();
         assert_eq!(board.get_turn(), 1);
     }
 
@@ -84,7 +88,8 @@ mod tests {
         let board = Board::new();
         let total_before = board.get_count(1) + board.get_count(2);
         
-        let board = board.apply_move_js(1, 2, 3);
+        let res = board.apply_move_js(1, 2, 3);
+        let board = res.board();
         let total_after = board.get_count(1) + board.get_count(2);
         
         assert_eq!(total_after, total_before + 1, "Should have exactly 1 more disk");
