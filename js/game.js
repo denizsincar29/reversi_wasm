@@ -2,7 +2,7 @@ import { PLAYER, SIZE } from './constants.js';
 import { gameState, wasm } from './state.js';
 import { audioEngine } from './audio.js';
 import { announce, updateUI, selectCell, flipPiece } from './ui.js';
-import { PHRASES } from '../phrases.js';
+import { TRANSLATIONS } from './i18n.js';
 
 export function downloadDebugLogs() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(gameState.debugLogs, null, 2));
@@ -12,16 +12,18 @@ export function downloadDebugLogs() {
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
-    announce('Debug logs downloaded.');
+    const t = TRANSLATIONS[gameState.language];
+    announce(t.debug_downloaded);
 }
 
 export async function handleCellClick(r, c) {
+    const t = TRANSLATIONS[gameState.language];
     if (gameState.aiMode === 'eve') {
-        announce('AI vs AI mode is active.');
+        announce(t.eve_active);
         return;
     }
     if (gameState.isAIThinking || gameState.board.get_turn() !== gameState.humanColor) {
-        announce('It\'s not your turn.');
+        announce(t.not_your_turn);
         return;
     }
 
@@ -36,7 +38,7 @@ export async function handleCellClick(r, c) {
 
     if (!legalMoves.includes(moveIndex)) {
         await audioEngine.play('error.wav');
-        announce(`Invalid move at ${String.fromCharCode(65 + c)}${r + 1}`);
+        announce(t.invalid_move(`${String.fromCharCode(65 + c)}${r + 1}`));
         return;
     }
 
@@ -78,16 +80,16 @@ export async function handleCellClick(r, c) {
     // Announce move
     const coord = String.fromCharCode(65 + c) + (r + 1);
     const playerName = gameState.humanColor === PLAYER.BLACK ? 'black' : 'white';
-    announce(PHRASES.announcements.playerMove(coord, playerName, flippedIndices.length));
+    announce(t.announcements.playerMove(coord, playerName, flippedIndices.length));
 
     // Comment on move quality
     const evaluation = gameState.board.get_last_eval();
     let qualityPhrases;
-    if (evaluation > 20) qualityPhrases = PHRASES.quality.excellent;
-    else if (evaluation > 5) qualityPhrases = PHRASES.quality.good;
-    else if (evaluation > -5) qualityPhrases = PHRASES.quality.fair;
-    else if (evaluation > -20) qualityPhrases = PHRASES.quality.bad;
-    else qualityPhrases = PHRASES.quality.blunder;
+    if (evaluation > 20) qualityPhrases = t.quality.excellent;
+    else if (evaluation > 5) qualityPhrases = t.quality.good;
+    else if (evaluation > -5) qualityPhrases = t.quality.fair;
+    else if (evaluation > -20) qualityPhrases = t.quality.bad;
+    else qualityPhrases = t.quality.blunder;
 
     const comment = qualityPhrases[Math.floor(Math.random() * qualityPhrases.length)];
     setTimeout(() => announce(comment), 1500);
@@ -108,9 +110,10 @@ export async function handleCellClick(r, c) {
 
 export async function makeAIMove() {
     gameState.isAIThinking = true;
+    const t = TRANSLATIONS[gameState.language];
 
     // Pick a random thinking phrase
-    const thinkingPhrase = PHRASES.thinking[Math.floor(Math.random() * PHRASES.thinking.length)];
+    const thinkingPhrase = t.thinking[Math.floor(Math.random() * t.thinking.length)];
     announce(thinkingPhrase);
 
     // Simulate thinking time
@@ -124,7 +127,7 @@ export async function makeAIMove() {
         try {
             gameState.board.pass();
             await audioEngine.play('pass.wav');
-            announce(PHRASES.announcements.pass(player === PLAYER.BLACK ? 'Black' : 'White'));
+            announce(t.announcements.pass(player === PLAYER.BLACK ? 'Black' : 'White'));
 
             updateUI();
 
@@ -202,9 +205,9 @@ export async function makeAIMove() {
     // Determine perspective
     if (gameState.aiMode === 'eve') {
         const name = player === PLAYER.BLACK ? 'Black AI' : 'White AI';
-        announce(PHRASES.announcements.aiMoveThirdPerson(name, coord, playerName, flippedIndices.length));
+        announce(t.announcements.aiMoveThirdPerson(name, coord, playerName, flippedIndices.length));
     } else {
-        announce(PHRASES.announcements.aiMoveFirstPerson(coord, playerName, flippedIndices.length));
+        announce(t.announcements.aiMoveFirstPerson(coord, playerName, flippedIndices.length));
     }
 
     updateUI();
@@ -236,7 +239,8 @@ export async function startNewGame() {
         fen: gameState.board.to_fen()
     }];
     updateUI();
-    announce('New game started.');
+    const t = TRANSLATIONS[gameState.language];
+    announce(t.new_game + '.');
 
     if (gameState.aiMode === 'eve' || gameState.board.get_turn() !== gameState.humanColor) {
         await makeAIMove();
@@ -244,11 +248,12 @@ export async function startNewGame() {
 }
 
 export async function passTurn() {
+    const t = TRANSLATIONS[gameState.language];
     try {
         gameState.board.pass();
         await audioEngine.play('pass.wav');
         const nextPlayer = gameState.board.get_turn();
-        announce('Turn passed. ' + (nextPlayer === gameState.humanColor ? 'Your turn.' : 'AI turn.'));
+        announce(t.turn_passed + ' ' + (nextPlayer === gameState.humanColor ? t.next_your_turn : t.next_ai_turn));
         updateUI();
 
         if (nextPlayer !== gameState.humanColor) {
@@ -260,26 +265,28 @@ export async function passTurn() {
 }
 
 export async function undoMove() {
+    const t = TRANSLATIONS[gameState.language];
     if (gameState.board.undo()) {
         gameState.debugLogs.push({
             type: 'undo',
             fen: gameState.board.to_fen()
         });
         updateUI();
-        announce('Move undone.');
+        announce(t.move_undone);
     }
 }
 
 export async function getHint() {
+    const t = TRANSLATIONS[gameState.language];
     if (gameState.board.get_turn() !== gameState.humanColor) {
-        announce('Wait for your turn.');
+        announce(t.wait_turn);
         return;
     }
 
     const legalMoves = gameState.board.get_legal_moves_js();
 
     if (legalMoves.length === 0) {
-        announce('No legal moves available.');
+        announce(t.no_legal_moves);
         return;
     }
 
@@ -291,48 +298,51 @@ export async function getHint() {
     if (hintMove >= 0 && hintMove < 64) {
         const r = Math.floor(hintMove / SIZE);
         const c = hintMove % SIZE;
-        announce(`Hint: Play at ${String.fromCharCode(65 + c)}${r + 1}`);
+        announce(t.hint_message(`${String.fromCharCode(65 + c)}${r + 1}`));
         selectCell(r, c);
     }
 }
 
 export function announceScore() {
+    const t = TRANSLATIONS[gameState.language];
     const blackCount = gameState.board.get_count(PLAYER.BLACK);
     const whiteCount = gameState.board.get_count(PLAYER.WHITE);
     const advantage = blackCount - whiteCount;
-    let advantageText = 'Both players are tied.';
+    let advantageText = t.tied;
     if (advantage > 0) {
-        advantageText = `Black is ahead by ${advantage} pieces.`;
+        advantageText = t.black_ahead(advantage);
     } else if (advantage < 0) {
-        advantageText = `White is ahead by ${-advantage} pieces.`;
+        advantageText = t.white_ahead(-advantage);
     }
-    announce(`Score: Black ${blackCount}, White ${whiteCount}. ${advantageText}`);
+    announce(t.score_summary(blackCount, whiteCount, advantageText));
 }
 
 export function announceLegalMoves() {
+    const t = TRANSLATIONS[gameState.language];
     const legalMoves = gameState.board.get_legal_moves_js();
-    const movesText = legalMoves.length === 0 ? 'No legal moves' : legalMoves.map(idx => {
+    const movesText = legalMoves.length === 0 ? t.no_legal_moves : legalMoves.map(idx => {
         const r = Math.floor(idx / SIZE);
         const c = idx % SIZE;
         return String.fromCharCode(65 + c) + (r + 1);
     }).join(', ');
-    announce(`Legal moves: ${movesText}`);
+    announce(t.legal_moves_list(movesText));
 }
 
 export function announceGameOver() {
+    const t = TRANSLATIONS[gameState.language];
     const winner = gameState.board.get_game_winner();
     const blackCount = gameState.board.get_count(PLAYER.BLACK);
     const whiteCount = gameState.board.get_count(PLAYER.WHITE);
 
     let message = '';
     if (winner === PLAYER.BLACK) {
-        message = `Game Over. Black wins ${blackCount} to ${whiteCount}.`;
+        message = t.game_over_win('Black', blackCount, whiteCount);
     } else if (winner === PLAYER.WHITE) {
-        message = `Game Over. White wins ${whiteCount} to ${blackCount}.`;
+        message = t.game_over_win('White', whiteCount, blackCount);
     } else if (winner === 0) {  // Draw
-        message = `Game Over. Draw at ${blackCount} to ${whiteCount}.`;
+        message = t.game_over_draw(blackCount, whiteCount);
     } else {
-        message = `Game Over. Final score: Black ${blackCount}, White ${whiteCount}.`;
+        message = t.game_over_final(blackCount, whiteCount);
     }
 
     announce(message);
