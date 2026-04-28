@@ -1,13 +1,15 @@
-# Reversi (wasm)
-A web-based implementation of the classic board game Reversi (also known as Othello) with AI, built using Rust and WebAssembly.
+![Rust](https://img.shields.io/badge/Rust-WASM-orange)
+![License](https://img.shields.io/github/license/denizsincar29/reversi_wasm)
+# Reversi (Rust + WebAssembly)
+A web-based implementation of the classic board game Reversi (often known as Othello) with AI, built using Rust and WebAssembly.
+Try it out [here!](https://denizsincar.ru/reversi/)
 This project demonstrates how to create an interactive game that runs efficiently in the browser, leveraging Rust's performance and WebAssembly's compatibility.
 
 ## Features
-- **Classic Gameplay**: Play the traditional Reversi game against an AI opponent;
-- **2 types of AI Opponents**: Choose between alpha-beta pruning and Minimax algorithms for a challenging gaming experience;
+- **Classic Gameplay**: Play against an AI opponent;
+- **AI opponent**: Supports minimax with optional alpha-beta pruning;
 - **Responsive Design**: Enjoy a seamless gaming experience on both desktop and mobile devices;
-- **Accessible for screenreaders**: The game is created by a blind developer, and is designed to be fully accessible for screen readers.
-
+- **Accessibility first**: The game is created by a blind developer, and is designed to be fully usable with screen readers.
 
 ## Technologies Used
 - **Rust**: The core game logic and AI algorithms are implemented in Rust for performance and safety;
@@ -16,7 +18,8 @@ This project demonstrates how to create an interactive game that runs efficientl
 - **HTML/CSS**: For structuring and styling the game interface.
 
 ## Getting Started
-To run the game locally, clone the repository and run the build script:
+If you wanna play the game directly, [here ya go!](https://denizsincar.ru/reversi/)
+To run the game locally, clone the repository and run the build script. Make sure you have Rust and wasm-pack installed.
 ```bash
 git clone git@github.com:denizsincar29/reversi_wasm.git
 cd reversi_wasm
