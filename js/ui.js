@@ -89,17 +89,18 @@ export function updateUI() {
             const pieceName = piece === PLAYER.BLACK ? ' black' : (piece === PLAYER.WHITE ? ' white' : '');
             cell.setAttribute('aria-label', `${coord}${pieceName}`);
 
-            // Remove old disks
-            const oldDisk = cell.querySelector('.disk');
-            if (oldDisk) oldDisk.remove();
-
-            // Add new disk
+            // Update or create disk
+            let disk = cell.querySelector('.disk');
             if (piece !== PLAYER.EMPTY) {
-                const disk = document.createElement('div');
+                if (!disk) {
+                    disk = document.createElement('div');
+                    cell.appendChild(disk);
+                }
                 const isBlack = piece === PLAYER.BLACK;
                 disk.className = `disk ${isBlack ? 'black' : 'white'}`;
                 disk.textContent = isBlack ? '●' : '○';
-                cell.appendChild(disk);
+            } else if (disk) {
+                disk.remove();
             }
 
             // Mark legal moves

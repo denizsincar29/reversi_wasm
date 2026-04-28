@@ -7,12 +7,15 @@ set -e
 
 # Load .env if it exists
 if [ -f .env ]; then
-    export $(grep -v '^#' .env | xargs)
+    set -a
+    source .env
+    set +a
 fi
 
+SERVE_DIR_FROM_ENV=$SERVE_DIR
 SERVE_DIR=${SERVE_DIR:-serve}
 SUDO_TO_SERVE=${SUDO_TO_SERVE:-false}
-CHOWN_WWW=${CHOWN_WWW:-false}
+CHMOD_WWW=${CHMOD_WWW:-false}
 
 echo "=== Building Reversi WASM ==="
 if command -v wasm-pack >/dev/null 2>&1; then
@@ -52,16 +55,16 @@ $CMD_PREFIX cp js/*.js "$SERVE_DIR/js/"
 $CMD_PREFIX cp phrases.js "$SERVE_DIR/" 2>/dev/null || true
 $CMD_PREFIX cp -r sounds "$SERVE_DIR/" 2>/dev/null || true
 
-if [ "$CHOWN_WWW" = "true" ]; then
-    echo "Changing ownership of $SERVE_DIR to www-data:www-data"
-    $CMD_PREFIX chown -R www-data:www-data "$SERVE_DIR"
+if [ "$CHMOD_WWW" = "true" ]; then
+    echo "Setting permissions of $SERVE_DIR to be web-readable"
+    $CMD_PREFIX chmod -R 755 "$SERVE_DIR"
 fi
 
 echo "✓ Serve folder ready: $SERVE_DIR"
 echo ""
 
 # If SERVE_DIR is provided in .env, don't ask to run http server
-if [ -n "$SERVE_DIR_FROM_ENV" ] || [ -f .env ] && grep -q "^SERVE_DIR=" .env; then
+if [ -n "$SERVE_DIR_FROM_ENV" ]; then
     echo "SERVE_DIR specified in .env, skipping HTTP server prompt."
 else
     # Ask user if they want to start HTTP server
