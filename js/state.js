@@ -9,9 +9,9 @@ export const gameState = {
     aiType: 'alphabeta',
     aiDepth: 3,
     aiMode: 'pve',
-    moveHistory: [],
     selectedCell: null,
     isAIThinking: false,
+    debugLogs: [],
 };
 
 export function setWasm(w) {

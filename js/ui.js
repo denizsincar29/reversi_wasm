@@ -73,15 +73,39 @@ export function setupBoard(handleCellClick) {
     boardContainer.appendChild(bottomRight);
 }
 
-export function updateUI() {
+export function flipPiece(r, c, player) {
+    const cell = document.getElementById(`cell-${r}-${c}`);
+    if (!cell) return;
+
+    let disk = cell.querySelector('.disk');
+    if (!disk) return;
+
+    disk.classList.remove('flipping');
+    void disk.offsetWidth; // Trigger reflow
+    disk.classList.add('flipping');
+
+    const isBlack = player === PLAYER.BLACK;
+    // Delay the color change to the middle of the flip animation
+    setTimeout(() => {
+        disk.classList.remove('black', 'white');
+        disk.classList.add(isBlack ? 'black' : 'white');
+        disk.textContent = isBlack ? '●' : '○';
+    }, 250);
+}
+
+export function updateUI(skipIndices = []) {
+    const skipSet = new Set(skipIndices.map(i => Number(i)));
     const grid = gameState.board.get_grid();
-    const legalMoves = gameState.board.get_legal_moves_js(gameState.board.get_turn());
+    const turn = gameState.board.get_turn();
+    const legalMoves = gameState.board.get_legal_moves_js(turn);
 
     // Update board cells
     for (let r = 0; r < SIZE; r++) {
         for (let c = 0; c < SIZE; c++) {
-            const cell = document.getElementById(`cell-${r}-${c}`);
             const idx = r * SIZE + c;
+            if (skipSet.has(idx)) continue;
+
+            const cell = document.getElementById(`cell-${r}-${c}`);
             const piece = grid[idx];
 
             // Update ARIA label
@@ -110,7 +134,6 @@ export function updateUI() {
 
     // Update status
     const status = document.getElementById('status');
-    const turn = gameState.board.get_turn();
     const turnText = turn === PLAYER.BLACK ? 'Black' : 'White';
     const yourText = turn === gameState.humanColor ? ' (Your turn)' : ' (AI)';
     status.textContent = `${turnText}'s turn${yourText}`;
@@ -134,6 +157,7 @@ export function updateUI() {
 
     // Update button states
     document.getElementById('pass-btn').disabled = legalMoves.length > 0 || gameState.board.get_turn() !== gameState.humanColor || gameState.aiMode === 'eve';
+    document.getElementById('undo-btn').disabled = gameState.board.get_history_len() === 0;
 }
 
 export function selectCell(r, c) {
