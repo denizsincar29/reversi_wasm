@@ -134,6 +134,7 @@ export function updateUI() {
 
     // Update button states
     document.getElementById('pass-btn').disabled = legalMoves.length > 0 || gameState.board.get_turn() !== gameState.humanColor || gameState.aiMode === 'eve';
+    document.getElementById('undo-btn').disabled = gameState.board.get_history_len() === 0;
 }
 
 export function selectCell(r, c) {

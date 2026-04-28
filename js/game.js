@@ -14,7 +14,7 @@ export async function handleCellClick(r, c) {
         return;
     }
 
-    const legalMoves = gameState.board.get_legal_moves_js(gameState.humanColor);
+    const legalMoves = gameState.board.get_legal_moves_js();
     // if no legal moves, pass turn
     if (legalMoves.length === 0) {
         await passTurn();
@@ -30,12 +30,13 @@ export async function handleCellClick(r, c) {
     }
 
     // Make the move
-    const moveResult = gameState.board.apply_move_js(gameState.humanColor, r, c);
-    const flippedIndices = moveResult.flipped_indices;
-    const oldBoard = gameState.board;
-    gameState.board = moveResult.board;
-    gameState.moveHistory.push(gameState.board.clone_js());
-    if (oldBoard) oldBoard.free();
+    let flippedIndices;
+    try {
+        flippedIndices = gameState.board.apply_move_js(r, c);
+    } catch (e) {
+        console.error(e);
+        return;
+    }
 
     // Play move sequence
     audioEngine.playMoveSequence(gameState.humanColor, r, c, flippedIndices);
@@ -46,8 +47,7 @@ export async function handleCellClick(r, c) {
     announce(PHRASES.announcements.playerMove(coord, playerName, flippedIndices.length));
 
     // Comment on move quality
-    const evaluation = gameState.board.get_score_js(gameState.humanColor);
-    moveResult.free();
+    const evaluation = gameState.board.get_last_eval();
     let qualityPhrases;
     if (evaluation > 20) qualityPhrases = PHRASES.quality.excellent;
     else if (evaluation > 5) qualityPhrases = PHRASES.quality.good;
@@ -82,27 +82,30 @@ export async function makeAIMove() {
     // Simulate thinking time
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    const grid = gameState.board.get_grid();
     const player = gameState.board.get_turn();
-    const legalMoves = gameState.board.get_legal_moves_js(player);
+    const legalMoves = gameState.board.get_legal_moves_js();
 
     if (legalMoves.length === 0) {
         // Pass
-        gameState.board.set_turn(gameState.board.other_js(player));
-        await audioEngine.play('pass.wav');
-        announce(PHRASES.announcements.pass(player === PLAYER.BLACK ? 'Black' : 'White'));
+        try {
+            gameState.board.pass();
+            await audioEngine.play('pass.wav');
+            announce(PHRASES.announcements.pass(player === PLAYER.BLACK ? 'Black' : 'White'));
 
-        updateUI();
+            updateUI();
 
-        if (gameState.board.check_is_terminal()) {
-            announceGameOver();
-            gameState.isAIThinking = false;
-            return;
-        }
+            if (gameState.board.check_is_terminal()) {
+                announceGameOver();
+                gameState.isAIThinking = false;
+                return;
+            }
 
-        if (gameState.aiMode === 'eve' || gameState.board.get_turn() !== gameState.humanColor) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-            await makeAIMove();
+            if (gameState.aiMode === 'eve' || gameState.board.get_turn() !== gameState.humanColor) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+                await makeAIMove();
+            }
+        } catch (e) {
+            console.error(e);
         }
 
         gameState.isAIThinking = false;
@@ -110,24 +113,7 @@ export async function makeAIMove() {
     }
 
     // Get AI move
-    let aiMoveObj = null;
-    let isFallback = false;
-    try {
-        if (gameState.aiType === 'alphabeta') {
-            const ai = new wasm.AlphaBetaPlayer(gameState.aiDepth);
-            aiMoveObj = ai.choose_move(grid, player);
-            ai.free();
-        } else {
-            const ai = new wasm.MinimaxPlayer(gameState.aiDepth);
-            aiMoveObj = ai.choose_move(grid, player);
-            ai.free();
-        }
-    } catch (error) {
-        console.error('AI Error:', error);
-        aiMoveObj = { cell_index: legalMoves[0], score: 0 };
-        isFallback = true;
-    }
-
+    let aiMoveObj = gameState.board.choose_ai_move(gameState.aiDepth);
     let aiMove = aiMoveObj.cell_index;
     if (aiMove < 0 || aiMove >= 64) {
         aiMove = legalMoves[0];
@@ -137,16 +123,14 @@ export async function makeAIMove() {
     const c = aiMove % SIZE;
 
     // Apply move
-    const moveResult = gameState.board.apply_move_js(player, r, c);
-    const flippedIndices = moveResult.flipped_indices;
-    const oldBoard = gameState.board;
-    gameState.board = moveResult.board;
-    gameState.moveHistory.push(gameState.board.clone_js());
-    if (oldBoard) oldBoard.free();
-
-    const evaluation = aiMoveObj.score;
-    if (!isFallback) aiMoveObj.free();
-    moveResult.free();
+    let flippedIndices;
+    try {
+        flippedIndices = gameState.board.apply_move_js(r, c);
+    } catch (e) {
+        console.error(e);
+        gameState.isAIThinking = false;
+        return;
+    }
 
     // Play move sequence
     audioEngine.playMoveSequence(player, r, c, flippedIndices);
@@ -162,20 +146,6 @@ export async function makeAIMove() {
     } else {
         announce(PHRASES.announcements.aiMoveFirstPerson(coord, playerName, flippedIndices.length));
     }
-
-    // Comment on move quality (AI move in PvE or AI vs AI)
-    let qualityPhrases;
-    if (evaluation > 20) qualityPhrases = PHRASES.quality.excellent;
-    else if (evaluation > 5) qualityPhrases = PHRASES.quality.good;
-    else if (evaluation > -5) qualityPhrases = PHRASES.quality.fair;
-    else if (evaluation > -20) qualityPhrases = PHRASES.quality.bad;
-    else qualityPhrases = PHRASES.quality.blunder;
-
-    const comment = qualityPhrases[Math.floor(Math.random() * qualityPhrases.length)];
-    const isEVE = gameState.aiMode === 'eve';
-    const qualityAnnouncement = isEVE ? `${player === PLAYER.BLACK ? 'Black' : 'White'} AI says: ${comment}` : comment;
-
-    setTimeout(() => announce(qualityAnnouncement), 1500);
 
     updateUI();
 
@@ -198,7 +168,6 @@ export async function makeAIMove() {
 
 export async function startNewGame() {
     if (gameState.board) gameState.board.free();
-    gameState.moveHistory.forEach(b => b.free());
 
     gameState.board = new wasm.Board();
     gameState.moveHistory = [];
@@ -212,23 +181,23 @@ export async function startNewGame() {
 }
 
 export async function passTurn() {
-    const nextPlayer = gameState.board.other_js(gameState.board.get_turn());
-    gameState.board.set_turn(nextPlayer);
-    await audioEngine.play('pass.wav');
-    announce('You passed. ' + (nextPlayer === gameState.humanColor ? 'Your turn.' : 'AI turn.'));
-    updateUI();
+    try {
+        gameState.board.pass();
+        await audioEngine.play('pass.wav');
+        const nextPlayer = gameState.board.get_turn();
+        announce('Turn passed. ' + (nextPlayer === gameState.humanColor ? 'Your turn.' : 'AI turn.'));
+        updateUI();
 
-    if (nextPlayer !== gameState.humanColor) {
-        await makeAIMove();
+        if (nextPlayer !== gameState.humanColor) {
+            await makeAIMove();
+        }
+    } catch (e) {
+        console.error(e);
     }
 }
 
 export async function undoMove() {
-    if (gameState.moveHistory.length > 0) {
-        const last = gameState.moveHistory.pop();
-        last.free();
-        if (gameState.board) gameState.board.free();
-        gameState.board = gameState.moveHistory[gameState.moveHistory.length - 1]?.clone_js() || new wasm.Board();
+    if (gameState.board.undo()) {
         updateUI();
         announce('Move undone.');
     }
@@ -240,8 +209,7 @@ export async function getHint() {
         return;
     }
 
-    const grid = gameState.board.get_grid();
-    const legalMoves = gameState.board.get_legal_moves_js(gameState.humanColor);
+    const legalMoves = gameState.board.get_legal_moves_js();
 
     if (legalMoves.length === 0) {
         announce('No legal moves available.');
@@ -249,16 +217,8 @@ export async function getHint() {
     }
 
     // Get hint from AI with shallow depth
-    let hintMove = -1;
-    try {
-        const ai = new wasm.MinimaxPlayer(2);
-        const hintMoveObj = ai.choose_move(grid, gameState.humanColor);
-        hintMove = hintMoveObj.cell_index;
-        hintMoveObj.free();
-        ai.free();
-    } catch (error) {
-        hintMove = legalMoves[0];
-    }
+    let hintMoveObj = gameState.board.choose_ai_move(2);
+    let hintMove = hintMoveObj.cell_index;
 
     if (hintMove >= 0 && hintMove < 64) {
         const r = Math.floor(hintMove / SIZE);
@@ -282,7 +242,7 @@ export function announceScore() {
 }
 
 export function announceLegalMoves() {
-    const legalMoves = gameState.board.get_legal_moves_js(gameState.board.get_turn());
+    const legalMoves = gameState.board.get_legal_moves_js();
     const movesText = legalMoves.length === 0 ? 'No legal moves' : legalMoves.map(idx => {
         const r = Math.floor(idx / SIZE);
         const c = idx % SIZE;
