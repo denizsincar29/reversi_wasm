@@ -133,9 +133,9 @@ export const TRANSLATIONS = {
         }
     },
     ru: {
-        title: "Реверси / Отелло - Версия WebAssembly",
+        title: "Реверси - Версия WebAssembly",
         header_title: "Реверси",
-        header_subtitle: "Версия WebAssembly - Играйте против ИИ с поддержкой специальных возможностей",
+        header_subtitle: "Версия WebAssembly - Играйте против ИИ (с поддержкой доступности)",
         settings_title: "Настройки игры",
         language_label: "Язык",
         your_color: "Ваш цвет",
@@ -151,21 +151,21 @@ export const TRANSLATIONS = {
         ai_difficulty: "Сложность ИИ (глубина)",
         new_game: "Новая игра",
         game_status: "Статус игры",
-        ready_to_start: "Готов к началу.",
+        ready_to_start: "Готовы начать.",
         score: "Счет",
         available_moves: "Доступные ходы",
         initializing: "Инициализация...",
         controls: "Управление",
-        focus_board: "Фокус на доску",
+        focus_board: "Фокусироваться на доске",
         navigate_board: "Навигация по доске",
-        play_at_cell: "Ходить в выбранную клетку",
+        play_at_cell: "Ходить на выбранную клетку",
         announce_score: "Озвучить счет",
         announce_moves: "Озвучить доступные ходы",
         board_label: "Игровое поле Реверси",
         pass_turn: "Пропустить ход",
         undo_move: "Отменить ход",
         ai_hint: "Подсказка ИИ",
-        footer_text: "Реверси / Отелло • Создано с помощью Rust и WebAssembly • Доступно и красиво",
+        footer_text: "Реверси • Создано с помощью Rust и WebAssembly • Доступно и красиво",
 
         // Rules
         rules_title: "Правила",
@@ -185,22 +185,22 @@ export const TRANSLATIONS = {
         error_loading: "Ошибка загрузки игры. Пожалуйста, обновите страницу.",
         eve_active: "Активен режим ИИ против ИИ.",
         not_your_turn: "Сейчас не ваш ход.",
-        invalid_move: (coord) => `Недопустимый ход в ${coord}.`,
+        invalid_move: (coord) => `Недопустимый ход на ${coord}.`,
         debug_downloaded: "Отладочные логи загружены.",
-        new_game_started: "Новая игра началась.",
-        turn_passed_your_turn: "Ход передан. Ваш ход.",
-        turn_passed_ai_turn: "Ход передан. Ход ИИ.",
+        new_game_started: "Поехали! Игра началась!",
+        turn_passed_your_turn: "Ход пропущен. Ваш ход.",
+        turn_passed_ai_turn: "Ход пропущен. Ход ИИ.",
         move_undone: "Ход отменен.",
         wait_turn: "Подождите своего хода.",
-        no_legal_moves: "Нет доступных ходов.",
-        hint_message: (coord) => `Подсказка: ходите в ${coord}.`,
+        no_legal_moves: "Нет законных ходов.",
+        hint_message: (coord) => `Подсказка: сходите на ${coord}.`,
         tied: "Ничья.",
-        black_ahead: (n) => `Черные впереди на ${n} шт.`,
-        white_ahead: (n) => `Белые впереди на ${n} шт.`,
+        black_ahead: (n) => `Черные впереди на ${n} дисков.`,
+        white_ahead: (n) => `Белые впереди на ${n} дисков.`,
         score_summary: (black, white, advantage) => `Счет: Черные ${black}, Белые ${white}. ${advantage}`,
         legal_moves_list: (moves) => `Доступные ходы: ${moves}`,
         game_over_win: (winner, score1, score2) => `Игра окончена. ${winner === 'Black' ? 'Черные победили' : 'Белые победили'} со счетом ${score1} : ${score2}.`,
-        game_over_draw: (score1, score2) => `Игра окончена. Ничья ${score1} : ${score2}.`,
+        game_over_draw: (score1, score2) => `Игра окончена ничьей ${score1} : ${score2}.`,
         game_over_final: (black, white) => `Игра окончена. Финальный счет: Черные ${black}, Белые ${white}.`,
 
         // Phrases
@@ -219,7 +219,7 @@ export const TRANSLATIONS = {
             "Оцениваю возможности...",
             "Планирую свою победу...",
             "Не торопите меня, я думаю...",
-            "Задумался..."
+            "Глубоко думаю..."
         ],
         quality: {
             excellent: [
@@ -259,9 +259,9 @@ export const TRANSLATIONS = {
             ]
         },
         announcements: {
-            playerMove: (coord, color, flips) => `${coord} ${color === 'black' ? 'черные' : 'белые'} поставлено, перевернуто ${flips} фишек.`,
-            aiMoveFirstPerson: (coord, color, flips) => `Я сходил в ${coord} за ${color === 'black' ? 'черных' : 'белых'}, перевернув ${flips} фишек.`,
-            aiMoveThirdPerson: (name, coord, color, flips) => `${name === 'Black AI' ? 'Черный ИИ' : 'Белый ИИ'} сходил в ${coord} за ${color === 'black' ? 'черных' : 'белых'}, перевернув ${flips} фишек.`,
+            playerMove: (coord, color, flips) => `Поставлена ${color === 'black' ? 'черная' : 'белая'} фишка на ${coord} перевернуто ${flips} фишек.`,
+            aiMoveFirstPerson: (coord, color, flips) => `Я сходил ${color === 'black' ? 'черной' : 'белой'} фишкой в ${coord}, перевернув ${flips} фишек.`,
+            aiMoveThirdPerson: (name, coord, color, flips) => `${name === 'Black AI' ? 'Черный ИИ' : 'Белый ИИ'} сходил в ${coord}, перевернув ${flips} фишек.`,
             pass: (player) => `У ${player === 'Black' ? 'черных' : 'белых'} нет доступных ходов. Пропуск хода.`
         }
     },
