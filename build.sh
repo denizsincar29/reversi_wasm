@@ -25,6 +25,7 @@ cp pkg/reversi_wasm_bg.wasm serve/
 cp index.html serve/
 cp style.css serve/
 cp script.js serve/
+cp phrases.js serve/ 2>/dev/null || true
 cp -r sounds serve/ 2>/dev/null || true
 
 echo "✓ Serve folder ready: ./serve/"
