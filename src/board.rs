@@ -16,6 +16,25 @@ pub struct Board {
     turn: u8,       // 1=black or 2=white
 }
 
+#[wasm_bindgen]
+pub struct MoveResult {
+    board: Board,
+    flipped_indices: Vec<u32>,
+}
+
+#[wasm_bindgen]
+impl MoveResult {
+    #[wasm_bindgen(getter)]
+    pub fn board(&self) -> Board {
+        self.board.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn flipped_indices(&self) -> Vec<u32> {
+        self.flipped_indices.clone()
+    }
+}
+
 impl Board {
     pub fn new() -> Board {
         let mut grid = vec![0; 64];
@@ -97,7 +116,7 @@ impl Board {
         moves
     }
 
-    pub fn apply_move(&self, player: u8, r: usize, c: usize) -> Board {
+    pub fn apply_move(&self, player: u8, r: usize, c: usize) -> (Board, Vec<usize>) {
         let moves = self.legal_moves(player);
         if !moves.contains(&(r, c)) {
             panic!("Invalid move: ({}, {})", r, c);
@@ -107,14 +126,20 @@ impl Board {
         new_grid[r * SIZE + c] = player;
 
         let flips = self.get_flips(player, c as i32, r as i32);
+        let mut flipped_indices = Vec::new();
         for (fx, fy) in flips {
-            new_grid[fy as usize * SIZE + fx as usize] = player;
+            let idx = fy as usize * SIZE + fx as usize;
+            new_grid[idx] = player;
+            flipped_indices.push(idx);
         }
 
-        Board {
-            grid: new_grid,
-            turn: self.other(player),
-        }
+        (
+            Board {
+                grid: new_grid,
+                turn: self.other(player),
+            },
+            flipped_indices
+        )
     }
 
     pub fn count(&self, player: u8) -> usize {
@@ -273,8 +298,12 @@ impl Board {
     }
 
     #[wasm_bindgen]
-    pub fn apply_move_js(&self, player: u8, r: u32, c: u32) -> Board {
-        self.apply_move(player, r as usize, c as usize)
+    pub fn apply_move_js(&self, player: u8, r: u32, c: u32) -> MoveResult {
+        let (new_board, flips) = self.apply_move(player, r as usize, c as usize);
+        MoveResult {
+            board: new_board,
+            flipped_indices: flips.iter().map(|&i| i as u32).collect(),
+        }
     }
 
     #[wasm_bindgen]
@@ -295,5 +324,11 @@ impl Board {
     #[wasm_bindgen]
     pub fn other_js(&self, player: u8) -> u8 {
         self.other(player)
+    }
+
+    #[wasm_bindgen]
+    pub fn get_score_js(&self, player: u8) -> i32 {
+        use crate::ai_utils::AIUtils;
+        AIUtils::heuristic(&self.grid, player)
     }
 }

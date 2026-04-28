@@ -25,6 +25,9 @@ function displayToPlayer(c) {
     }
 }
 
+// Import Phrases
+import { PHRASES } from './phrases.js';
+
 // Import WASM module
 import init, { Board, AlphaBetaPlayer, MinimaxPlayer } from './reversi_wasm.js';
 
@@ -33,7 +36,7 @@ const AUDIO_CONFIG = {
     BASE_FREQ: 16000,
     STEP: 1000,
     DEFAULT_SAMPLE_RATE: 22050,
-    sounds: ['disk.wav', 'white.wav', 'black.wav', 'error.wav', 'pass.wav']
+    sounds: ['disk.wav', 'white.wav', 'black.wav', 'error.wav', 'pass.wav', 'reversi.mp3']
 };
 
 // Game State
@@ -62,6 +65,7 @@ let gameState = {
     humanColor: PLAYER.BLACK,
     aiType: 'alphabeta',
     aiDepth: 3,
+    aiMode: 'pve',
     moveHistory: [],
     selectedCell: null,
     isAIThinking: false,
@@ -155,11 +159,13 @@ class AudioEngine {
         }
     }
 
-    async playMoveSequence(player, r, c, flips) {
+    async playMoveSequence(player, r, c, flippedIndices) {
         await this.play('disk.wav', r, c);
-        const sound = player === 'W' ? 'white.wav' : 'black.wav';
+        const sound = player === PLAYER.WHITE ? 'white.wav' : 'black.wav';
 
-        for (const [fr, fc] of flips) {
+        for (const idx of flippedIndices) {
+            const fr = Math.floor(idx / SIZE);
+            const fc = idx % SIZE;
             await new Promise(resolve => setTimeout(resolve, 120));
             await this.play(sound, fr, fc);
         }
@@ -170,15 +176,20 @@ const audioEngine = new AudioEngine();
 
 // Screen Reader Announcements
 function announce(message) {
+    console.log('Announce:', message);
     const announcer = document.getElementById('sr-announcer');
     if (announcer) {
-        announcer.textContent = message;
+        announcer.textContent = '';
+        setTimeout(() => {
+            announcer.textContent = message;
+        }, 100);
     }
 }
 
 // Initialize WASM and UI
 async function initializeGame() {
     try {
+        if (gameState.board) gameState.board.free();
         gameState.board = new wasm.Board();
         
         setupBoard();
@@ -277,6 +288,12 @@ function setupEventListeners() {
         });
     });
 
+    document.querySelectorAll('input[name="game-mode"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            gameState.aiMode = e.target.value;
+        });
+    });
+
     document.getElementById('ai-depth').addEventListener('change', (e) => {
         gameState.aiDepth = parseInt(e.target.value);
         document.getElementById('depth-display').textContent = e.target.value;
@@ -359,6 +376,10 @@ function selectCell(r, c) {
 
 // Handle Cell Click
 async function handleCellClick(r, c) {
+    if (gameState.aiMode === 'eve') {
+        announce('AI vs AI mode is active.');
+        return;
+    }
     if (gameState.isAIThinking || gameState.board.get_turn() !== gameState.humanColor) {
         announce('It\'s not your turn.');
         return;
@@ -374,11 +395,34 @@ async function handleCellClick(r, c) {
     }
 
     // Make the move
-    const newBoard = gameState.board.apply_move_js(gameState.humanColor, r, c);
-    gameState.board = newBoard;
-    gameState.moveHistory.push(newBoard);
+    const moveResult = gameState.board.apply_move_js(gameState.humanColor, r, c);
+    const flippedIndices = moveResult.flipped_indices;
+    const oldBoard = gameState.board;
+    gameState.board = moveResult.board;
+    gameState.moveHistory.push(gameState.board.clone_js());
+    if (oldBoard) oldBoard.free();
 
-    await audioEngine.play('disk.wav', r, c);
+    // Play move sequence
+    audioEngine.playMoveSequence(gameState.humanColor, r, c, flippedIndices);
+
+    // Announce move
+    const coord = String.fromCharCode(65 + c) + (r + 1);
+    const playerName = gameState.humanColor === PLAYER.BLACK ? 'black' : 'white';
+    announce(PHRASES.announcements.playerMove(coord, playerName, flippedIndices.length));
+
+    // Comment on move quality
+    const evaluation = gameState.board.get_score_js(gameState.humanColor);
+    moveResult.free();
+    let qualityPhrases;
+    if (evaluation > 20) qualityPhrases = PHRASES.quality.excellent;
+    else if (evaluation > 5) qualityPhrases = PHRASES.quality.good;
+    else if (evaluation > -5) qualityPhrases = PHRASES.quality.fair;
+    else if (evaluation > -20) qualityPhrases = PHRASES.quality.bad;
+    else qualityPhrases = PHRASES.quality.blunder;
+
+    const comment = qualityPhrases[Math.floor(Math.random() * qualityPhrases.length)];
+    setTimeout(() => announce(comment), 1500);
+
     updateUI();
 
     // Check if game is over
@@ -396,10 +440,13 @@ async function handleCellClick(r, c) {
 // Make AI Move
 async function makeAIMove() {
     gameState.isAIThinking = true;
-    announce('AI is thinking...');
+
+    // Pick a random thinking phrase
+    const thinkingPhrase = PHRASES.thinking[Math.floor(Math.random() * PHRASES.thinking.length)];
+    announce(thinkingPhrase);
 
     // Simulate thinking time
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     const grid = gameState.board.get_grid();
     const player = gameState.board.get_turn();
@@ -409,27 +456,45 @@ async function makeAIMove() {
         // Pass
         gameState.board.set_turn(gameState.board.other_js(player));
         await audioEngine.play('pass.wav');
-        announce(`AI passed. Your turn.`);
-        gameState.isAIThinking = false;
+        announce(PHRASES.announcements.pass(player === PLAYER.BLACK ? 'Black' : 'White'));
+
         updateUI();
+
+        if (gameState.board.check_is_terminal()) {
+            announceGameOver();
+            gameState.isAIThinking = false;
+            return;
+        }
+
+        if (gameState.aiMode === 'eve' || gameState.board.get_turn() !== gameState.humanColor) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await makeAIMove();
+        }
+
+        gameState.isAIThinking = false;
         return;
     }
 
     // Get AI move
-    let aiMove = -1;
+    let aiMoveObj = null;
+    let isFallback = false;
     try {
         if (gameState.aiType === 'alphabeta') {
             const ai = new wasm.AlphaBetaPlayer(gameState.aiDepth);
-            aiMove = ai.choose_move(grid, player);
+            aiMoveObj = ai.choose_move(grid, player);
+            ai.free();
         } else {
             const ai = new wasm.MinimaxPlayer(gameState.aiDepth);
-            aiMove = ai.choose_move(grid, player);
+            aiMoveObj = ai.choose_move(grid, player);
+            ai.free();
         }
     } catch (error) {
         console.error('AI Error:', error);
-        aiMove = legalMoves[0];
+        aiMoveObj = { cell_index: legalMoves[0], score: 0 };
+        isFallback = true;
     }
 
+    let aiMove = aiMoveObj.cell_index;
     if (aiMove < 0 || aiMove >= 64) {
         aiMove = legalMoves[0];
     }
@@ -438,16 +503,45 @@ async function makeAIMove() {
     const c = aiMove % SIZE;
 
     // Apply move
-    const newBoard = gameState.board.apply_move_js(player, r, c);
-    gameState.board = newBoard;
-    gameState.moveHistory.push(newBoard);
+    const moveResult = gameState.board.apply_move_js(player, r, c);
+    const flippedIndices = moveResult.flipped_indices;
+    const oldBoard = gameState.board;
+    gameState.board = moveResult.board;
+    gameState.moveHistory.push(gameState.board.clone_js());
+    if (oldBoard) oldBoard.free();
 
-    await audioEngine.play('disk.wav', r, c);
+    const evaluation = aiMoveObj.score;
+    if (!isFallback) aiMoveObj.free();
+    moveResult.free();
+
+    // Play move sequence
+    audioEngine.playMoveSequence(player, r, c, flippedIndices);
 
     // Announce move
     const coord = String.fromCharCode(65 + c) + (r + 1);
-    const playerName = player === PLAYER.BLACK ? 'Black' : 'White';
-    announce(`${playerName} played at ${coord}`);
+    const playerName = player === PLAYER.BLACK ? 'black' : 'white';
+
+    // Determine perspective
+    if (gameState.aiMode === 'eve') {
+        const name = player === PLAYER.BLACK ? 'Black AI' : 'White AI';
+        announce(PHRASES.announcements.aiMoveThirdPerson(name, coord, playerName, flippedIndices.length));
+    } else {
+        announce(PHRASES.announcements.aiMoveFirstPerson(coord, playerName, flippedIndices.length));
+    }
+
+    // Comment on move quality (AI move in PvE or AI vs AI)
+    let qualityPhrases;
+    if (evaluation > 20) qualityPhrases = PHRASES.quality.excellent;
+    else if (evaluation > 5) qualityPhrases = PHRASES.quality.good;
+    else if (evaluation > -5) qualityPhrases = PHRASES.quality.fair;
+    else if (evaluation > -20) qualityPhrases = PHRASES.quality.bad;
+    else qualityPhrases = PHRASES.quality.blunder;
+
+    const comment = qualityPhrases[Math.floor(Math.random() * qualityPhrases.length)];
+    const isEVE = gameState.aiMode === 'eve';
+    const qualityAnnouncement = isEVE ? `${player === PLAYER.BLACK ? 'Black' : 'White'} AI says: ${comment}` : comment;
+
+    setTimeout(() => announce(qualityAnnouncement), 1500);
 
     updateUI();
 
@@ -458,13 +552,10 @@ async function makeAIMove() {
         return;
     }
 
-    // Check if human can move
-    const humanMoves = gameState.board.get_legal_moves_js(gameState.humanColor);
-    if (humanMoves.length === 0) {
-        gameState.board.set_turn(player);
-        await audioEngine.play('pass.wav');
-        announce('You have no legal moves. Passing.');
-        await new Promise(resolve => setTimeout(resolve, 800));
+    // Check next move
+    const nextPlayer = gameState.board.get_turn();
+    if (gameState.aiMode === 'eve' || nextPlayer !== gameState.humanColor) {
+        await new Promise(resolve => setTimeout(resolve, 500));
         await makeAIMove();
     }
 
@@ -482,6 +573,11 @@ function updateUI() {
             const cell = document.getElementById(`cell-${r}-${c}`);
             const idx = r * SIZE + c;
             const piece = grid[idx];
+
+            // Update ARIA label
+            const coord = `${String.fromCharCode(65 + c)}${r + 1}`;
+            const pieceName = piece === PLAYER.BLACK ? ' black' : (piece === PLAYER.WHITE ? ' white' : '');
+            cell.setAttribute('aria-label', `${coord}${pieceName}`);
 
             // Remove old disks
             const oldDisk = cell.querySelector('.disk');
@@ -526,18 +622,21 @@ function updateUI() {
     document.getElementById('moves-content').textContent = movesText;
 
     // Update button states
-    document.getElementById('pass-btn').disabled = legalMoves.length > 0 || gameState.board.get_turn() !== gameState.humanColor;
+    document.getElementById('pass-btn').disabled = legalMoves.length > 0 || gameState.board.get_turn() !== gameState.humanColor || gameState.aiMode === 'eve';
 }
 
 // Game Control Functions
 async function startNewGame() {
+    if (gameState.board) gameState.board.free();
+    gameState.moveHistory.forEach(b => b.free());
+
     gameState.board = new wasm.Board();
     gameState.moveHistory = [];
     gameState.turn = PLAYER.BLACK;
     updateUI();
     announce('New game started.');
 
-    if (gameState.humanColor === PLAYER.WHITE) {
+    if (gameState.aiMode === 'eve' || gameState.board.get_turn() !== gameState.humanColor) {
         await makeAIMove();
     }
 }
@@ -556,8 +655,10 @@ async function passTurn() {
 
 async function undoMove() {
     if (gameState.moveHistory.length > 0) {
-        gameState.moveHistory.pop();
-        gameState.board = gameState.moveHistory[gameState.moveHistory.length - 1] || new wasm.Board();
+        const last = gameState.moveHistory.pop();
+        last.free();
+        if (gameState.board) gameState.board.free();
+        gameState.board = gameState.moveHistory[gameState.moveHistory.length - 1]?.clone_js() || new wasm.Board();
         updateUI();
         announce('Move undone.');
     }
@@ -581,7 +682,10 @@ async function getHint() {
     let hintMove = -1;
     try {
         const ai = new wasm.MinimaxPlayer(2);
-        hintMove = ai.choose_move(grid, gameState.humanColor);
+        const hintMoveObj = ai.choose_move(grid, gameState.humanColor);
+        hintMove = hintMoveObj.cell_index;
+        hintMoveObj.free();
+        ai.free();
     } catch (error) {
         hintMove = legalMoves[0];
     }

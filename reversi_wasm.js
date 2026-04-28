@@ -1,5 +1,52 @@
 /* @ts-self-types="./reversi_wasm.d.ts" */
 
+export class AIMove {
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(AIMove.prototype);
+        obj.__wbg_ptr = ptr;
+        AIMoveFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        AIMoveFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_aimove_free(ptr, 0);
+    }
+    /**
+     * @returns {number}
+     */
+    get cell_index() {
+        const ret = wasm.__wbg_get_aimove_cell_index(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    get score() {
+        const ret = wasm.__wbg_get_aimove_score(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @param {number} arg0
+     */
+    set cell_index(arg0) {
+        wasm.__wbg_set_aimove_cell_index(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set score(arg0) {
+        wasm.__wbg_set_aimove_score(this.__wbg_ptr, arg0);
+    }
+}
+if (Symbol.dispose) AIMove.prototype[Symbol.dispose] = AIMove.prototype.free;
+
 export class AlphaBetaPlayer {
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
@@ -14,13 +61,13 @@ export class AlphaBetaPlayer {
     /**
      * @param {Uint8Array} board
      * @param {number} player
-     * @returns {number}
+     * @returns {AIMove}
      */
     choose_move(board, player) {
         const ptr0 = passArray8ToWasm0(board, wasm.__wbindgen_malloc);
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.alphabetaplayer_choose_move(this.__wbg_ptr, ptr0, len0, player);
-        return ret;
+        return AIMove.__wrap(ret);
     }
     /**
      * @param {number} depth
@@ -69,11 +116,11 @@ export class Board {
      * @param {number} player
      * @param {number} r
      * @param {number} c
-     * @returns {Board}
+     * @returns {MoveResult}
      */
     apply_move_js(player, r, c) {
         const ret = wasm.board_apply_move_js(this.__wbg_ptr, player, r, c);
-        return Board.__wrap(ret);
+        return MoveResult.__wrap(ret);
     }
     /**
      * @returns {boolean}
@@ -122,6 +169,14 @@ export class Board {
         var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
+    }
+    /**
+     * @param {number} player
+     * @returns {number}
+     */
+    get_score_js(player) {
+        const ret = wasm.board_get_score_js(this.__wbg_ptr, player);
+        return ret;
     }
     /**
      * @returns {number}
@@ -182,13 +237,13 @@ export class MinimaxPlayer {
     /**
      * @param {Uint8Array} board
      * @param {number} player
-     * @returns {number}
+     * @returns {AIMove}
      */
     choose_move(board, player) {
         const ptr0 = passArray8ToWasm0(board, wasm.__wbindgen_malloc);
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.minimaxplayer_choose_move(this.__wbg_ptr, ptr0, len0, player);
-        return ret;
+        return AIMove.__wrap(ret);
     }
     /**
      * @param {number} depth
@@ -207,6 +262,43 @@ export class MinimaxPlayer {
     }
 }
 if (Symbol.dispose) MinimaxPlayer.prototype[Symbol.dispose] = MinimaxPlayer.prototype.free;
+
+export class MoveResult {
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(MoveResult.prototype);
+        obj.__wbg_ptr = ptr;
+        MoveResultFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        MoveResultFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_moveresult_free(ptr, 0);
+    }
+    /**
+     * @returns {Board}
+     */
+    get board() {
+        const ret = wasm.moveresult_board(this.__wbg_ptr);
+        return Board.__wrap(ret);
+    }
+    /**
+     * @returns {Uint32Array}
+     */
+    get flipped_indices() {
+        const ret = wasm.moveresult_flipped_indices(this.__wbg_ptr);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+}
+if (Symbol.dispose) MoveResult.prototype[Symbol.dispose] = MoveResult.prototype.free;
 
 export function init() {
     wasm.init();
@@ -255,6 +347,9 @@ function __wbg_get_imports() {
     };
 }
 
+const AIMoveFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_aimove_free(ptr >>> 0, 1));
 const AlphaBetaPlayerFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_alphabetaplayer_free(ptr >>> 0, 1));
@@ -264,6 +359,9 @@ const BoardFinalization = (typeof FinalizationRegistry === 'undefined')
 const MinimaxPlayerFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_minimaxplayer_free(ptr >>> 0, 1));
+const MoveResultFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_moveresult_free(ptr >>> 0, 1));
 
 function getArrayU32FromWasm0(ptr, len) {
     ptr = ptr >>> 0;
