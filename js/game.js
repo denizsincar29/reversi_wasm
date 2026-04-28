@@ -15,6 +15,12 @@ export async function handleCellClick(r, c) {
     }
 
     const legalMoves = gameState.board.get_legal_moves_js(gameState.humanColor);
+    // if no legal moves, pass turn
+    if (legalMoves.length === 0) {
+        await passTurn();
+        updateUI();
+        return;
+    }
     const moveIndex = r * SIZE + c;
 
     if (!legalMoves.includes(moveIndex)) {
@@ -265,7 +271,14 @@ export async function getHint() {
 export function announceScore() {
     const blackCount = gameState.board.get_count(PLAYER.BLACK);
     const whiteCount = gameState.board.get_count(PLAYER.WHITE);
-    announce(`Score: Black ${blackCount}, White ${whiteCount}`);
+    const advantage = blackCount - whiteCount;
+    let advantageText = 'Both players are tied.';
+    if (advantage > 0) {
+        advantageText = `Black is ahead by ${advantage} pieces.`;
+    } else if (advantage < 0) {
+        advantageText = `White is ahead by ${-advantage} pieces.`;
+    }
+    announce(`Score: Black ${blackCount}, White ${whiteCount}. ${advantageText}`);
 }
 
 export function announceLegalMoves() {
