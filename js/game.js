@@ -240,7 +240,7 @@ export async function startNewGame() {
     }];
     updateUI();
     const t = TRANSLATIONS[gameState.language];
-    announce(t.new_game + '.');
+    announce(t.new_game_started);
 
     if (gameState.aiMode === 'eve' || gameState.board.get_turn() !== gameState.humanColor) {
         await makeAIMove();
@@ -253,7 +253,8 @@ export async function passTurn() {
         gameState.board.pass();
         await audioEngine.play('pass.wav');
         const nextPlayer = gameState.board.get_turn();
-        announce(t.turn_passed + ' ' + (nextPlayer === gameState.humanColor ? t.next_your_turn : t.next_ai_turn));
+        const message = nextPlayer === gameState.humanColor ? t.turn_passed_your_turn : t.turn_passed_ai_turn;
+        announce(message);
         updateUI();
 
         if (nextPlayer !== gameState.humanColor) {

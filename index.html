@@ -20,10 +20,11 @@
                 <h2 data-i18n="settings_title">Game Settings</h2>
 
                 <div class="setting-group">
-                    <label for="language-select">Language / Язык</label>
+                    <label for="language-select" data-i18n="language_label">Language / Язык / Dil</label>
                     <select id="language-select">
                         <option value="en">English</option>
                         <option value="ru">Русский</option>
+                        <option value="tr">Türkçe</option>
                     </select>
                 </div>
 
@@ -96,6 +97,17 @@
                     <li><kbd>Enter</kbd> - <span data-i18n="play_at_cell">Play at selected cell</span></li>
                     <li><kbd>Alt+A</kbd> - <span data-i18n="announce_score">Announce score</span></li>
                     <li><kbd>Alt+M</kbd> - <span data-i18n="announce_moves">Announce legal moves</span></li>
+                </ul>
+            </section>
+
+            <section class="rules">
+                <h2 data-i18n="rules_title">Rules</h2>
+                <ul>
+                    <li data-i18n="rule_1">Reversi is played on an 8x8 board. Players take turns placing disks of their color.</li>
+                    <li data-i18n="rule_2">A move is legal if it traps one or more opponent disks in a straight line (horizontal, vertical, or diagonal) between the new disk and another disk of the same color.</li>
+                    <li data-i18n="rule_3">Trapped disks are flipped to the current player's color.</li>
+                    <li data-i18n="rule_4">Example: At the start, if Black plays at D3, the White disk at D4 is trapped between D3 and D5, and flips to Black.</li>
+                    <li data-i18n="rule_5">The game ends when the board is full or neither player can move. The winner has the most disks.</li>
                 </ul>
             </section>
         </aside>

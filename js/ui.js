@@ -167,8 +167,13 @@ export function updateUI(skipIndices = []) {
     // Update status
     const status = document.getElementById('status');
     const turnText = turn === PLAYER.BLACK ? t.turn_black : t.turn_white;
-    const yourText = turn === gameState.humanColor ? t.your_turn : t.ai_turn;
-    status.textContent = `${turnText}${yourText}`;
+    const suffix = turn === gameState.humanColor ? t.your_turn_suffix : t.ai_turn_suffix;
+    // Remove the trailing period from turnText before adding suffix, if necessary,
+    // or just use the suffix as is. The user mentioned punctuation rules.
+    // In our i18n.js, turn_black is "Black's turn." and suffix is " (Your turn)".
+    // So "Black's turn. (Your turn)" might be okay, but let's be cleaner.
+    const baseText = turnText.endsWith('.') ? turnText.slice(0, -1) : turnText;
+    status.textContent = `${baseText}${suffix}.`;
 
     // Update score
     const blackCount = gameState.board.get_count(PLAYER.BLACK);

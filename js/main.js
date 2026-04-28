@@ -20,8 +20,8 @@ async function initializeGame() {
 
         updateUI();
         const t = TRANSLATIONS[gameState.language];
-        const colorName = gameState.humanColor === PLAYER.BLACK ? t.black : t.white;
-        announce(t.game_initialized(colorName));
+        const colorId = gameState.humanColor === PLAYER.BLACK ? 'black' : 'white';
+        announce(t.game_initialized(colorId));
 
         if (gameState.humanColor !== gameState.board.get_turn() || gameState.aiMode === 'eve') {
             await makeAIMove();
@@ -75,6 +75,8 @@ function autoDetectLanguage() {
     const browserLang = navigator.language || navigator.userLanguage;
     if (browserLang.startsWith('ru')) {
         gameState.language = 'ru';
+    } else if (browserLang.startsWith('tr')) {
+        gameState.language = 'tr';
     } else {
         gameState.language = 'en';
     }
