@@ -5,8 +5,27 @@
 
 set -e
 
+# Load .env if it exists
+if [ -f .env ]; then
+    set -a
+    source .env
+    set +a
+fi
+
+SERVE_DIR_FROM_ENV=$SERVE_DIR
+SERVE_DIR=${SERVE_DIR:-serve}
+SUDO_TO_SERVE=${SUDO_TO_SERVE:-false}
+CHMOD_WWW=${CHMOD_WWW:-false}
+
 echo "=== Building Reversi WASM ==="
-wasm-pack build --target web --release
+if command -v wasm-pack >/dev/null 2>&1; then
+    wasm-pack build --target web --release
+else
+    echo "wasm-pack not found, using cargo and wasm-bindgen directly..."
+    cargo build --target wasm32-unknown-unknown --release
+    mkdir -p pkg
+    wasm-bindgen --target web --out-dir pkg --no-typescript target/wasm32-unknown-unknown/release/reversi_wasm.wasm
+fi
 
 echo ""
 echo "✓ WASM build complete!"
@@ -18,30 +37,48 @@ echo "  - reversi_wasm.d.ts (TypeScript definitions)"
 echo ""
 
 # Create a simple serve folder with HTML/CSS/JS and WASM
-echo "Setting up serve folder..."
-mkdir -p serve
-cp pkg/reversi_wasm.js serve/
-cp pkg/reversi_wasm_bg.wasm serve/
-cp index.html serve/
-cp style.css serve/
-cp script.js serve/
-cp phrases.js serve/ 2>/dev/null || true
-cp -r sounds serve/ 2>/dev/null || true
+echo "Setting up serve folder: $SERVE_DIR"
 
-echo "✓ Serve folder ready: ./serve/"
+CMD_PREFIX=""
+if [ "$SUDO_TO_SERVE" = "true" ]; then
+    CMD_PREFIX="sudo"
+fi
+
+$CMD_PREFIX mkdir -p "$SERVE_DIR"
+$CMD_PREFIX mkdir -p "$SERVE_DIR/js"
+
+$CMD_PREFIX cp pkg/reversi_wasm.js "$SERVE_DIR/"
+$CMD_PREFIX cp pkg/reversi_wasm_bg.wasm "$SERVE_DIR/"
+$CMD_PREFIX cp index.html "$SERVE_DIR/"
+$CMD_PREFIX cp style.css "$SERVE_DIR/"
+$CMD_PREFIX cp js/*.js "$SERVE_DIR/js/"
+$CMD_PREFIX cp phrases.js "$SERVE_DIR/" 2>/dev/null || true
+$CMD_PREFIX cp -r sounds "$SERVE_DIR/" 2>/dev/null || true
+
+if [ "$CHMOD_WWW" = "true" ]; then
+    echo "Setting permissions of $SERVE_DIR to be web-readable"
+    $CMD_PREFIX chmod -R 755 "$SERVE_DIR"
+fi
+
+echo "✓ Serve folder ready: $SERVE_DIR"
 echo ""
 
-# Ask user if they want to start HTTP server
-read -p "Start HTTP server on port 8000? (y/n) " -n 1 -r
-echo ""
-
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo "Starting server..."
-    echo "Visit http://localhost:8000"
-    echo ""
-    cd serve
-    uv run python -m http.server 8000
+# If SERVE_DIR is provided in .env, don't ask to run http server
+if [ -n "$SERVE_DIR_FROM_ENV" ]; then
+    echo "SERVE_DIR specified in .env, skipping HTTP server prompt."
 else
-    echo "To start the server manually, run:"
-    echo "  cd serve && uv run python -m http.server 8000"
+    # Ask user if they want to start HTTP server
+    read -p "Start HTTP server on port 8000? (y/n) " -n 1 -r
+    echo ""
+
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo "Starting server..."
+        echo "Visit http://localhost:8000"
+        echo ""
+        cd "$SERVE_DIR"
+        python3 -m http.server 8000
+    else
+        echo "To start the server manually, run:"
+        echo "  cd $SERVE_DIR && python3 -m http.server 8000"
+    fi
 fi
