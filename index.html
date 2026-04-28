@@ -3,70 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reversi / Othello - WebAssembly Edition</title>
+    <title data-i18n="title">Reversi / Othello - WebAssembly Edition</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="sr-announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <header>
-        <h1>Reversi</h1>
-        <p>WebAssembly Edition - Play against AI with Accessibility</p>
+        <h1 data-i18n="header_title">Reversi</h1>
+        <p data-i18n="header_subtitle">WebAssembly Edition - Play against AI with Accessibility</p>
     </header>
 
     <main>
         <aside class="controls">
             <section class="settings">
-                <h2>Game Settings</h2>
+                <h2 data-i18n="settings_title">Game Settings</h2>
+
+                <div class="setting-group">
+                    <label for="language-select" data-i18n="language_label">Language / Язык / Dil</label>
+                    <select id="language-select">
+                        <option value="en">English</option>
+                        <option value="ru">Русский</option>
+                        <option value="tr">Türkçe</option>
+                    </select>
+                </div>
+
                 <fieldset>
-                    <legend>Your Color</legend>
+                    <legend data-i18n="your_color">Your Color</legend>
                     <label>
                         <input type="radio" name="human-color" value="B" checked>
-                        Black (Goes First)
+                        <span data-i18n="black_goes_first">Black (Goes First)</span>
                     </label>
                     <label>
                         <input type="radio" name="human-color" value="W">
-                        White
+                        <span data-i18n="white">White</span>
                     </label>
                 </fieldset>
 
                 <fieldset>
-                    <legend>Opponent</legend>
+                    <legend data-i18n="opponent">Opponent</legend>
                     <label>
                         <input type="radio" name="ai-type" value="alphabeta" checked>
-                        Alpha-Beta (Faster)
+                        <span data-i18n="alphabeta">Alpha-Beta (Faster)</span>
                     </label>
                     <label>
                         <input type="radio" name="ai-type" value="minimax">
-                        Minimax (Thorough)
+                        <span data-i18n="minimax">Minimax (Thorough)</span>
                     </label>
                 </fieldset>
 
                 <fieldset>
-                    <legend>Game Mode</legend>
+                    <legend data-i18n="game_mode">Game Mode</legend>
                     <label>
                         <input type="radio" name="game-mode" value="pve" checked>
-                        Human vs AI
+                        <span data-i18n="pve">Human vs AI</span>
                     </label>
                     <label>
                         <input type="radio" name="game-mode" value="eve">
-                        AI vs AI
+                        <span data-i18n="eve">AI vs AI</span>
                     </label>
                 </fieldset>
 
-                <label for="ai-depth">AI Difficulty (Depth)</label>
+                <label for="ai-depth" data-i18n="ai_difficulty">AI Difficulty (Depth)</label>
                 <input type="range" id="ai-depth" min="1" max="8" value="3">
                 <span id="depth-display">3</span>
 
-                <button id="new-game-btn" class="btn btn-primary">New Game</button>
+                <button id="new-game-btn" class="btn btn-primary" data-i18n="new_game">New Game</button>
             </section>
 
             <section class="stats">
-                <h2>Game Status</h2>
-                <div id="status" class="status-box">Ready to start</div>
+                <h2 data-i18n="game_status">Game Status</h2>
+                <div id="status" class="status-box" data-i18n="ready_to_start">Ready to start</div>
                 
                 <div id="advantage-panel" class="info-panel">
-                    <h3>Score</h3>
+                    <h3 data-i18n="score">Score</h3>
                     <div id="score-content">
                         <span class="black-count">●: 2</span>
                         <span class="white-count">○: 2</span>
@@ -74,38 +84,49 @@
                 </div>
 
                 <div id="legal-moves-panel" class="info-panel">
-                    <h3>Available Moves</h3>
-                    <div id="moves-content">Initializing...</div>
+                    <h3 data-i18n="available_moves">Available Moves</h3>
+                    <div id="moves-content" data-i18n="initializing">Initializing...</div>
                 </div>
             </section>
 
             <section class="help">
-                <h2>Controls</h2>
+                <h2 data-i18n="controls">Controls</h2>
                 <ul>
-                    <li><kbd>B</kbd> - Focus board</li>
-                    <li><kbd>Arrow Keys</kbd> - Navigate board</li>
-                    <li><kbd>Enter</kbd> - Play at selected cell</li>
-                    <li><kbd>Alt+A</kbd> - Announce score</li>
-                    <li><kbd>Alt+M</kbd> - Announce legal moves</li>
+                    <li><kbd>B</kbd> - <span data-i18n="focus_board">Focus board</span></li>
+                    <li><kbd>Arrow Keys</kbd> - <span data-i18n="navigate_board">Navigate board</span></li>
+                    <li><kbd>Enter</kbd> - <span data-i18n="play_at_cell">Play at selected cell</span></li>
+                    <li><kbd>Alt+A</kbd> - <span data-i18n="announce_score">Announce score</span></li>
+                    <li><kbd>Alt+M</kbd> - <span data-i18n="announce_moves">Announce legal moves</span></li>
+                </ul>
+            </section>
+
+            <section class="rules">
+                <h2 data-i18n="rules_title">Rules</h2>
+                <ul>
+                    <li data-i18n="rule_1">Reversi is played on an 8x8 board. Players take turns placing disks of their color.</li>
+                    <li data-i18n="rule_2">A move is legal if it traps one or more opponent disks in a straight line (horizontal, vertical, or diagonal) between the new disk and another disk of the same color.</li>
+                    <li data-i18n="rule_3">Trapped disks are flipped to the current player's color.</li>
+                    <li data-i18n="rule_4">Example: At the start, if Black plays at D3, the White disk at D4 is trapped between D3 and D5, and flips to Black.</li>
+                    <li data-i18n="rule_5">The game ends when the board is full or neither player can move. The winner has the most disks.</li>
                 </ul>
             </section>
         </aside>
 
         <section class="board-section">
-            <div id="board-container" class="board" role="grid" aria-label="Reversi Game Board">
+            <div id="board-container" class="board" role="grid" aria-label="Reversi Game Board" data-i18n-label="board_label">
                 <!-- Board will be generated by JavaScript -->
             </div>
             
             <section class="board-controls">
-                <button id="pass-btn" class="btn" disabled>Pass Turn</button>
-                <button id="undo-btn" class="btn" disabled>Undo Move</button>
-                <button id="hint-btn" class="btn">AI Hint</button>
+                <button id="pass-btn" class="btn" disabled data-i18n="pass_turn">Pass Turn</button>
+                <button id="undo-btn" class="btn" disabled data-i18n="undo_move">Undo Move</button>
+                <button id="hint-btn" class="btn" data-i18n="ai_hint">AI Hint</button>
             </section>
         </section>
     </main>
 
     <footer>
-        <p>Reversi / Othello • Built with Rust & WebAssembly • Accessible & Beautiful</p>
+        <p data-i18n="footer_text">Reversi / Othello • Built with Rust & WebAssembly • Accessible & Beautiful</p>
     </footer>
 
     <script src="js/main.js" type="module"></script>

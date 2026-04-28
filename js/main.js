@@ -1,8 +1,9 @@
 import init, { Board, AlphaBetaPlayer, MinimaxPlayer } from '../reversi_wasm.js';
 import { PLAYER, SIZE } from './constants.js';
 import { gameState, setWasm } from './state.js';
-import { setupBoard, updateUI, selectCell, announce } from './ui.js';
+import { setupBoard, updateUI, selectCell, announce, updateLanguageUI } from './ui.js';
 import { handleCellClick, makeAIMove, startNewGame, getHint, passTurn, undoMove, announceScore, announceLegalMoves } from './game.js';
+import { TRANSLATIONS } from './i18n.js';
 
 // Initialize WASM and start game when ready
 async function initializeGame() {
@@ -12,16 +13,72 @@ async function initializeGame() {
 
         setupBoard(handleCellClick);
         setupEventListeners();
-        updateUI();
-        const colorName = gameState.humanColor === PLAYER.BLACK ? 'Black' : 'White';
-        announce(`Game initialized. You are playing as ${colorName}`);
 
-        if (gameState.humanColor === PLAYER.WHITE) {
+        applyURLParameters();
+        autoDetectLanguage();
+        updateLanguageUI();
+
+        updateUI();
+        const t = TRANSLATIONS[gameState.language];
+        const colorId = gameState.humanColor === PLAYER.BLACK ? 'black' : 'white';
+        announce(t.game_initialized(colorId));
+
+        if (gameState.humanColor !== gameState.board.get_turn() || gameState.aiMode === 'eve') {
             await makeAIMove();
         }
     } catch (error) {
         console.error('Failed to initialize WASM:', error);
-        announce('Error loading game. Please refresh the page.');
+        const t = TRANSLATIONS[gameState.language] || TRANSLATIONS.en;
+        announce(t.error_loading);
+    }
+}
+
+function applyURLParameters() {
+    const params = new URLSearchParams(window.location.search);
+
+    const fen = params.get('fen');
+    if (fen) {
+        try {
+            gameState.board.from_fen(fen);
+        } catch (e) {
+            console.warn('Invalid FEN in URL:', e);
+        }
+    }
+
+    const mode = params.get('mode');
+    if (mode === 'pve' || mode === 'eve') {
+        gameState.aiMode = mode;
+        const radio = document.querySelector(`input[name="game-mode"][value="${mode}"]`);
+        if (radio) radio.checked = true;
+    }
+
+    const depth = params.get('depth');
+    if (depth) {
+        const d = parseInt(depth);
+        if (d >= 1 && d <= 8) {
+            gameState.aiDepth = d;
+            document.getElementById('ai-depth').value = d;
+            document.getElementById('depth-display').textContent = d;
+        }
+    }
+
+    const lang = params.get('lang');
+    if (lang && TRANSLATIONS[lang]) {
+        gameState.language = lang;
+    }
+}
+
+function autoDetectLanguage() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('lang')) return; // URL parameter takes precedence
+
+    const browserLang = navigator.language || navigator.userLanguage;
+    if (browserLang.startsWith('ru')) {
+        gameState.language = 'ru';
+    } else if (browserLang.startsWith('tr')) {
+        gameState.language = 'tr';
+    } else {
+        gameState.language = 'en';
     }
 }
 
@@ -52,6 +109,12 @@ function setupEventListeners() {
     document.getElementById('ai-depth').addEventListener('change', (e) => {
         gameState.aiDepth = parseInt(e.target.value);
         document.getElementById('depth-display').textContent = e.target.value;
+    });
+
+    document.getElementById('language-select').addEventListener('change', (e) => {
+        gameState.language = e.target.value;
+        updateLanguageUI();
+        updateUI();
     });
 
     // Keyboard Navigation

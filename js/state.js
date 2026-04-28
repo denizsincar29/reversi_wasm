@@ -9,6 +9,7 @@ export const gameState = {
     aiType: 'alphabeta',
     aiDepth: 3,
     aiMode: 'pve',
+    language: 'en',
     selectedCell: null,
     isAIThinking: false,
     debugLogs: [],
