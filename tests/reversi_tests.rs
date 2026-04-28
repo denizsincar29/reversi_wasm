@@ -24,10 +24,16 @@ fn test_legal_moves() {
 #[test]
 fn test_apply_move() {
     let mut game = Game::new();
+    // D3 = index 19. Initial D4 = White (27). E4 = Black (28). D5 = Black (35). E5 = White (36).
+    // Playing D3 (Black) should flip D4 (White) to Black.
     game.apply_move(Square(19)).unwrap(); // D3
     assert_eq!(game.turn, Player::White);
     assert_eq!(game.black_mask.count_ones(), 4);
     assert_eq!(game.white_mask.count_ones(), 1);
+
+    // Check if D4 (index 27) is now Black
+    assert!((game.black_mask & (1 << 27)) != 0, "D4 should be black after playing D3");
+    assert!((game.white_mask & (1 << 27)) == 0, "D4 should NOT be white after playing D3");
 }
 
 #[test]

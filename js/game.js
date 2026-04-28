@@ -38,6 +38,9 @@ export async function handleCellClick(r, c) {
         return;
     }
 
+    // Update UI immediately to show the current board state
+    updateUI();
+
     // Play move sequence
     audioEngine.playMoveSequence(gameState.humanColor, r, c, flippedIndices);
 
@@ -115,6 +118,8 @@ export async function makeAIMove() {
     // Get AI move
     let aiMoveObj = gameState.board.choose_ai_move(gameState.aiDepth);
     let aiMove = aiMoveObj.cell_index;
+    aiMoveObj.free();
+
     if (aiMove < 0 || aiMove >= 64) {
         aiMove = legalMoves[0];
     }
@@ -131,6 +136,9 @@ export async function makeAIMove() {
         gameState.isAIThinking = false;
         return;
     }
+
+    // Update UI immediately to show the current board state
+    updateUI();
 
     // Play move sequence
     audioEngine.playMoveSequence(player, r, c, flippedIndices);
@@ -170,7 +178,6 @@ export async function startNewGame() {
     if (gameState.board) gameState.board.free();
 
     gameState.board = new wasm.Board();
-    gameState.moveHistory = [];
     gameState.turn = PLAYER.BLACK;
     updateUI();
     announce('New game started.');
@@ -219,6 +226,7 @@ export async function getHint() {
     // Get hint from AI with shallow depth
     let hintMoveObj = gameState.board.choose_ai_move(2);
     let hintMove = hintMoveObj.cell_index;
+    hintMoveObj.free();
 
     if (hintMove >= 0 && hintMove < 64) {
         const r = Math.floor(hintMove / SIZE);

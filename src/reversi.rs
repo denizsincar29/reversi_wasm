@@ -369,20 +369,24 @@ pub fn evaluate(player: u64, opponent: u64) -> i32 {
     (p_count - o_count) + 10 * mobility + 50 * (p_corners - o_corners)
 }
 
-pub fn alpha_beta(game: &Game, depth: usize, mut alpha: i32, beta: i32) -> (i32, Option<Square>) {
-    let legal = game.get_legal_moves();
-    if depth == 0 || (legal == 0 && {
-        let mut next = game.clone();
-        next.turn = next.turn.opponent();
-        next.get_legal_moves() == 0
-    }) {
-        return (evaluate(game.get_mask(game.turn), game.get_mask(game.turn.opponent())), None);
+pub fn alpha_beta(game: &Game, depth: usize, alpha: i32, beta: i32) -> (i32, Option<Square>) {
+    alpha_beta_recursive(game.black_mask, game.white_mask, game.turn, depth, alpha, beta)
+}
+
+fn alpha_beta_recursive(black: u64, white: u64, turn: Player, depth: usize, mut alpha: i32, beta: i32) -> (i32, Option<Square>) {
+    let (player_mask, opponent_mask) = if turn == Player::Black { (black, white) } else { (white, black) };
+    let legal = get_legal_moves(player_mask, opponent_mask);
+
+    if depth == 0 {
+        return (evaluate(player_mask, opponent_mask), None);
     }
 
     if legal == 0 {
-        let mut next_game = game.clone();
-        next_game.pass().unwrap();
-        let (val, _) = alpha_beta(&next_game, depth - 1, -beta, -alpha);
+        let opponent_legal = get_legal_moves(opponent_mask, player_mask);
+        if opponent_legal == 0 {
+            return (evaluate(player_mask, opponent_mask), None);
+        }
+        let (val, _) = alpha_beta_recursive(black, white, turn.opponent(), depth - 1, -beta, -alpha);
         return (-val, None);
     }
 
@@ -396,9 +400,15 @@ pub fn alpha_beta(game: &Game, depth: usize, mut alpha: i32, beta: i32) -> (i32,
     });
 
     for i in move_indices {
-        let mut next_game = game.clone();
-        next_game.apply_move(Square(i)).unwrap();
-        let (val, _) = alpha_beta(&next_game, depth - 1, -beta, -alpha);
+        let move_bit = 1 << i;
+        let flips = get_flips(move_bit, player_mask, opponent_mask);
+        let (new_black, new_white) = if turn == Player::Black {
+            (black | move_bit | flips, white & !flips)
+        } else {
+            (black & !flips, white | move_bit | flips)
+        };
+
+        let (val, _) = alpha_beta_recursive(new_black, new_white, turn.opponent(), depth - 1, -beta, -alpha);
         let score = -val;
         if score > best_val {
             best_val = score;
