@@ -33,6 +33,7 @@ export const TRANSLATIONS = {
         undo_move: "Undo Move",
         ai_hint: "AI Hint",
         footer_text: "Reversi / Othello • Built with Rust & WebAssembly • Accessible & Beautiful",
+        github_link: "GitHub Repository",
 
         // Rules
         rules_title: "Rules",
@@ -166,6 +167,7 @@ export const TRANSLATIONS = {
         undo_move: "Отменить ход",
         ai_hint: "Подсказка ИИ",
         footer_text: "Реверси • Создано с помощью Rust и WebAssembly • Доступно и красиво",
+        github_link: "Репозиторий на GitHub",
 
         // Rules
         rules_title: "Правила",
@@ -298,7 +300,8 @@ export const TRANSLATIONS = {
         pass_turn: "Pas Geç",
         undo_move: "Hamleyi Geri Al",
         ai_hint: "İpucu Al",
-        footer_text: "Reversi / Othello • Rust ve WebAssembly ile yapıldı • Erişilebilir ve Güzel",
+        footer_text: "Reversi • Rust ve WebAssembly ile yapıldı • Erişilebilir ve Güzel",
+        github_link: "GitHub Deposu",
 
         // Rules
         rules_title: "Kurallar",
