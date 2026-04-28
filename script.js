@@ -36,7 +36,7 @@ const AUDIO_CONFIG = {
     BASE_FREQ: 16000,
     STEP: 1000,
     DEFAULT_SAMPLE_RATE: 22050,
-    sounds: ['disk.wav', 'white.wav', 'black.wav', 'error.wav', 'pass.wav']
+    sounds: ['disk.wav', 'white.wav', 'black.wav', 'error.wav', 'pass.wav', 'reversi.mp3']
 };
 
 // Game State
@@ -176,15 +176,20 @@ const audioEngine = new AudioEngine();
 
 // Screen Reader Announcements
 function announce(message) {
+    console.log('Announce:', message);
     const announcer = document.getElementById('sr-announcer');
     if (announcer) {
-        announcer.textContent = message;
+        announcer.textContent = '';
+        setTimeout(() => {
+            announcer.textContent = message;
+        }, 100);
     }
 }
 
 // Initialize WASM and UI
 async function initializeGame() {
     try {
+        if (gameState.board) gameState.board.free();
         gameState.board = new wasm.Board();
         
         setupBoard();
@@ -392,11 +397,13 @@ async function handleCellClick(r, c) {
     // Make the move
     const moveResult = gameState.board.apply_move_js(gameState.humanColor, r, c);
     const flippedIndices = moveResult.flipped_indices;
+    const oldBoard = gameState.board;
     gameState.board = moveResult.board;
-    gameState.moveHistory.push(gameState.board);
+    gameState.moveHistory.push(gameState.board.clone_js());
+    if (oldBoard) oldBoard.free();
 
     // Play move sequence
-    await audioEngine.playMoveSequence(gameState.humanColor, r, c, flippedIndices);
+    audioEngine.playMoveSequence(gameState.humanColor, r, c, flippedIndices);
 
     // Announce move
     const coord = String.fromCharCode(65 + c) + (r + 1);
@@ -404,7 +411,8 @@ async function handleCellClick(r, c) {
     announce(PHRASES.announcements.playerMove(coord, playerName, flippedIndices.length));
 
     // Comment on move quality
-    const evaluation = moveResult.score;
+    const evaluation = gameState.board.get_score_js(gameState.humanColor);
+    moveResult.free();
     let qualityPhrases;
     if (evaluation > 20) qualityPhrases = PHRASES.quality.excellent;
     else if (evaluation > 5) qualityPhrases = PHRASES.quality.good;
@@ -449,24 +457,41 @@ async function makeAIMove() {
         gameState.board.set_turn(gameState.board.other_js(player));
         await audioEngine.play('pass.wav');
         announce(PHRASES.announcements.pass(player === PLAYER.BLACK ? 'Black' : 'White'));
-        gameState.isAIThinking = false;
+
         updateUI();
+
+        if (gameState.board.check_is_terminal()) {
+            announceGameOver();
+            gameState.isAIThinking = false;
+            return;
+        }
+
+        if (gameState.aiMode === 'eve' || gameState.board.get_turn() !== gameState.humanColor) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await makeAIMove();
+        }
+
+        gameState.isAIThinking = false;
         return;
     }
 
     // Get AI move
     let aiMoveObj = null;
+    let isFallback = false;
     try {
         if (gameState.aiType === 'alphabeta') {
             const ai = new wasm.AlphaBetaPlayer(gameState.aiDepth);
             aiMoveObj = ai.choose_move(grid, player);
+            ai.free();
         } else {
             const ai = new wasm.MinimaxPlayer(gameState.aiDepth);
             aiMoveObj = ai.choose_move(grid, player);
+            ai.free();
         }
     } catch (error) {
         console.error('AI Error:', error);
         aiMoveObj = { cell_index: legalMoves[0], score: 0 };
+        isFallback = true;
     }
 
     let aiMove = aiMoveObj.cell_index;
@@ -480,11 +505,17 @@ async function makeAIMove() {
     // Apply move
     const moveResult = gameState.board.apply_move_js(player, r, c);
     const flippedIndices = moveResult.flipped_indices;
+    const oldBoard = gameState.board;
     gameState.board = moveResult.board;
-    gameState.moveHistory.push(gameState.board);
+    gameState.moveHistory.push(gameState.board.clone_js());
+    if (oldBoard) oldBoard.free();
+
+    const evaluation = aiMoveObj.score;
+    if (!isFallback) aiMoveObj.free();
+    moveResult.free();
 
     // Play move sequence
-    await audioEngine.playMoveSequence(player, r, c, flippedIndices);
+    audioEngine.playMoveSequence(player, r, c, flippedIndices);
 
     // Announce move
     const coord = String.fromCharCode(65 + c) + (r + 1);
@@ -497,6 +528,20 @@ async function makeAIMove() {
     } else {
         announce(PHRASES.announcements.aiMoveFirstPerson(coord, playerName, flippedIndices.length));
     }
+
+    // Comment on move quality (AI move in PvE or AI vs AI)
+    let qualityPhrases;
+    if (evaluation > 20) qualityPhrases = PHRASES.quality.excellent;
+    else if (evaluation > 5) qualityPhrases = PHRASES.quality.good;
+    else if (evaluation > -5) qualityPhrases = PHRASES.quality.fair;
+    else if (evaluation > -20) qualityPhrases = PHRASES.quality.bad;
+    else qualityPhrases = PHRASES.quality.blunder;
+
+    const comment = qualityPhrases[Math.floor(Math.random() * qualityPhrases.length)];
+    const isEVE = gameState.aiMode === 'eve';
+    const qualityAnnouncement = isEVE ? `${player === PLAYER.BLACK ? 'Black' : 'White'} AI says: ${comment}` : comment;
+
+    setTimeout(() => announce(qualityAnnouncement), 1500);
 
     updateUI();
 
@@ -582,6 +627,9 @@ function updateUI() {
 
 // Game Control Functions
 async function startNewGame() {
+    if (gameState.board) gameState.board.free();
+    gameState.moveHistory.forEach(b => b.free());
+
     gameState.board = new wasm.Board();
     gameState.moveHistory = [];
     gameState.turn = PLAYER.BLACK;
@@ -607,8 +655,10 @@ async function passTurn() {
 
 async function undoMove() {
     if (gameState.moveHistory.length > 0) {
-        gameState.moveHistory.pop();
-        gameState.board = gameState.moveHistory[gameState.moveHistory.length - 1] || new wasm.Board();
+        const last = gameState.moveHistory.pop();
+        last.free();
+        if (gameState.board) gameState.board.free();
+        gameState.board = gameState.moveHistory[gameState.moveHistory.length - 1]?.clone_js() || new wasm.Board();
         updateUI();
         announce('Move undone.');
     }
@@ -632,7 +682,10 @@ async function getHint() {
     let hintMove = -1;
     try {
         const ai = new wasm.MinimaxPlayer(2);
-        hintMove = ai.choose_move(grid, gameState.humanColor);
+        const hintMoveObj = ai.choose_move(grid, gameState.humanColor);
+        hintMove = hintMoveObj.cell_index;
+        hintMoveObj.free();
+        ai.free();
     } catch (error) {
         hintMove = legalMoves[0];
     }

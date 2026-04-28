@@ -171,6 +171,14 @@ export class Board {
         return v1;
     }
     /**
+     * @param {number} player
+     * @returns {number}
+     */
+    get_score_js(player) {
+        const ret = wasm.board_get_score_js(this.__wbg_ptr, player);
+        return ret;
+    }
+    /**
      * @returns {number}
      */
     get_turn() {

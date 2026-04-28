@@ -21,6 +21,7 @@ export const board_get_count: (a: number, b: number) => number;
 export const board_get_game_winner: (a: number) => number;
 export const board_get_grid: (a: number) => [number, number];
 export const board_get_legal_moves_js: (a: number, b: number) => [number, number];
+export const board_get_score_js: (a: number, b: number) => number;
 export const board_get_turn: (a: number) => number;
 export const board_other_js: (a: number, b: number) => number;
 export const board_set_grid: (a: number, b: number, c: number) => void;

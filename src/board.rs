@@ -325,4 +325,10 @@ impl Board {
     pub fn other_js(&self, player: u8) -> u8 {
         self.other(player)
     }
+
+    #[wasm_bindgen]
+    pub fn get_score_js(&self, player: u8) -> i32 {
+        use crate::ai_utils::AIUtils;
+        AIUtils::heuristic(&self.grid, player)
+    }
 }

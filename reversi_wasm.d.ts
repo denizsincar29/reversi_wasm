@@ -27,6 +27,7 @@ export class Board {
     get_game_winner(): number;
     get_grid(): Uint8Array;
     get_legal_moves_js(player: number): Uint32Array;
+    get_score_js(player: number): number;
     get_turn(): number;
     other_js(player: number): number;
     set_grid(grid: Uint8Array): void;
@@ -76,6 +77,7 @@ export interface InitOutput {
     readonly board_get_game_winner: (a: number) => number;
     readonly board_get_grid: (a: number) => [number, number];
     readonly board_get_legal_moves_js: (a: number, b: number) => [number, number];
+    readonly board_get_score_js: (a: number, b: number) => number;
     readonly board_get_turn: (a: number) => number;
     readonly board_other_js: (a: number, b: number) => number;
     readonly board_set_grid: (a: number, b: number, c: number) => void;
