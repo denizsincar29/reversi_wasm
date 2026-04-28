@@ -132,8 +132,15 @@ function handleKeyboard(event) {
                 }
             }
             break;
+        case 'D':
+            if (event.ctrlKey && event.shiftKey) {
+                event.preventDefault();
+                downloadDebugLogs();
+            }
+            break;
     }
 }
+
 
 function startGameWhenReady() {
     if (document.readyState === 'loading') {

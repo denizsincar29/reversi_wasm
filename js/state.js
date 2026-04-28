@@ -11,6 +11,7 @@ export const gameState = {
     aiMode: 'pve',
     selectedCell: null,
     isAIThinking: false,
+    debugLogs: [],
 };
 
 export function setWasm(w) {

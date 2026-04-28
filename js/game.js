@@ -1,8 +1,19 @@
 import { PLAYER, SIZE } from './constants.js';
 import { gameState, wasm } from './state.js';
 import { audioEngine } from './audio.js';
-import { announce, updateUI, selectCell } from './ui.js';
+import { announce, updateUI, selectCell, flipPiece } from './ui.js';
 import { PHRASES } from '../phrases.js';
+
+export function downloadDebugLogs() {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(gameState.debugLogs, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "reversi_debug.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+    announce('Debug logs downloaded.');
+}
 
 export async function handleCellClick(r, c) {
     if (gameState.aiMode === 'eve') {
@@ -38,11 +49,31 @@ export async function handleCellClick(r, c) {
         return;
     }
 
-    // Update UI immediately to show the current board state
-    updateUI();
+    // Update UI but skip the flipped pieces and the new move to animate them
+    updateUI([...flippedIndices, moveIndex]);
+
+    // Place the new piece
+    const newCell = document.getElementById(`cell-${r}-${c}`);
+    if (newCell && !newCell.querySelector('.disk')) {
+        const disk = document.createElement('div');
+        const isBlack = gameState.humanColor === PLAYER.BLACK;
+        disk.className = `disk ${isBlack ? 'black' : 'white'} placing`;
+        disk.textContent = isBlack ? '●' : '○';
+        newCell.appendChild(disk);
+    }
 
     // Play move sequence
-    audioEngine.playMoveSequence(gameState.humanColor, r, c, flippedIndices);
+    await audioEngine.playMoveSequence(gameState.humanColor, r, c, flippedIndices, (fr, fc) => {
+        flipPiece(fr, fc, gameState.humanColor);
+    });
+
+    // Debug logging
+    gameState.debugLogs.push({
+        type: 'player_move',
+        r, c,
+        flippedIndices,
+        fen: gameState.board.to_fen()
+    });
 
     // Announce move
     const coord = String.fromCharCode(65 + c) + (r + 1);
@@ -137,11 +168,32 @@ export async function makeAIMove() {
         return;
     }
 
-    // Update UI immediately to show the current board state
-    updateUI();
+    // Update UI but skip the flipped pieces and the new move to animate them
+    const moveIndex = r * SIZE + c;
+    updateUI([...flippedIndices, moveIndex]);
+
+    // Place the new piece
+    const newCell = document.getElementById(`cell-${r}-${c}`);
+    if (newCell && !newCell.querySelector('.disk')) {
+        const disk = document.createElement('div');
+        const isBlack = player === PLAYER.BLACK;
+        disk.className = `disk ${isBlack ? 'black' : 'white'} placing`;
+        disk.textContent = isBlack ? '●' : '○';
+        newCell.appendChild(disk);
+    }
 
     // Play move sequence
-    audioEngine.playMoveSequence(player, r, c, flippedIndices);
+    await audioEngine.playMoveSequence(player, r, c, flippedIndices, (fr, fc) => {
+        flipPiece(fr, fc, player);
+    });
+
+    // Debug logging
+    gameState.debugLogs.push({
+        type: 'ai_move',
+        r, c,
+        flippedIndices,
+        fen: gameState.board.to_fen()
+    });
 
     // Announce move
     const coord = String.fromCharCode(65 + c) + (r + 1);
@@ -179,6 +231,10 @@ export async function startNewGame() {
 
     gameState.board = new wasm.Board();
     gameState.turn = PLAYER.BLACK;
+    gameState.debugLogs = [{
+        type: 'start_game',
+        fen: gameState.board.to_fen()
+    }];
     updateUI();
     announce('New game started.');
 
@@ -205,6 +261,10 @@ export async function passTurn() {
 
 export async function undoMove() {
     if (gameState.board.undo()) {
+        gameState.debugLogs.push({
+            type: 'undo',
+            fen: gameState.board.to_fen()
+        });
         updateUI();
         announce('Move undone.');
     }

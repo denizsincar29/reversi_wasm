@@ -87,7 +87,7 @@ class AudioEngine {
         }
     }
 
-    async playMoveSequence(player, r, c, flippedIndices) {
+    async playMoveSequence(player, r, c, flippedIndices, onFlip = null) {
         await this.play('disk.wav', r, c);
         const sound = player === PLAYER.WHITE ? 'white.wav' : 'black.wav';
 
@@ -96,7 +96,12 @@ class AudioEngine {
             const fc = idx % SIZE;
             await new Promise(resolve => setTimeout(resolve, 120));
             await this.play(sound, fr, fc);
+            if (onFlip) {
+                onFlip(fr, fc);
+            }
         }
+        // Wait for the last flip animation to finish
+        await new Promise(resolve => setTimeout(resolve, 500));
     }
 }
 

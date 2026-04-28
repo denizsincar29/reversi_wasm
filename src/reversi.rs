@@ -421,3 +421,26 @@ fn alpha_beta_recursive(black: u64, white: u64, turn: Player, depth: usize, mut 
     }
     (best_val, best_move)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_d3_flips_d4() {
+        let mut game = Game::new();
+        let d3 = Square::from_notation("D3").unwrap();
+        game.apply_move(d3).expect("D3 should be legal");
+
+        let d4 = Square::from_notation("D4").unwrap();
+        assert_eq!(game.grid_cache[d4.0 as usize], 1, "D4 should be black after D3 move");
+    }
+
+    #[test]
+    fn test_d3_bit_index() {
+        let d3 = Square::from_notation("D3").unwrap();
+        assert_eq!(d3.0, 19);
+        let d4 = Square::from_notation("D4").unwrap();
+        assert_eq!(d4.0, 27);
+    }
+}
