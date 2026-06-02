@@ -1,15 +1,10 @@
 #!/usr/bin/env bash
-# rebuild.sh — deploy Reversi WASM frontend to /var/www/html/reversi
+# rebuild.sh — build WASM and deploy Reversi frontend to /var/www/html/reversi
 #
 # What it does:
-#   • Copies every static frontend file (HTML, CSS, JS, sounds) and the
-#     pre-built WASM artefacts from pkg/ to DEST
-#   • Skips .git, src/, tests/, *.sh, *.md, *.toml, package*.json, *.py
-#   • Never deletes manually-added server-side files in DEST
-#
-# Prerequisites:
-#   Run build.sh first to produce pkg/reversi_wasm.js and
-#   pkg/reversi_wasm_bg.wasm, then run this script to deploy.
+#   1. Builds the WASM package with wasm-pack (or cargo + wasm-bindgen)
+#   2. Copies only the static frontend files and pkg/ artefacts to DEST
+#   3. Never deletes manually-added server-side files in DEST
 #
 # Usage:
 #   ./rebuild.sh              — deploy to default target
@@ -36,37 +31,43 @@ if [[ ! -f "$SRC/index.html" ]]; then
     exit 1
 fi
 
-if [[ ! -f "$SRC/pkg/reversi_wasm_bg.wasm" ]]; then
-    echo -e "${RED}ERROR: pkg/reversi_wasm_bg.wasm not found.${NC}"
-    echo    "       Run ./build.sh first to compile the WASM artefacts."
-    exit 1
+# ── Build WASM ────────────────────────────────────────────────────────────────
+cd "$SRC"
+echo -e "${GREEN}==> Building WASM...${NC}"
+if command -v wasm-pack >/dev/null 2>&1; then
+    wasm-pack build --target web --release
+else
+    echo -e "${YELLOW}  wasm-pack not found, falling back to cargo + wasm-bindgen${NC}"
+    cargo build --target wasm32-unknown-unknown --release
+    mkdir -p pkg
+    wasm-bindgen --target web --out-dir pkg --no-typescript \
+        target/wasm32-unknown-unknown/release/reversi_wasm.wasm
 fi
+echo -e "${GREEN}==> WASM build complete${NC}"
+echo
 
-# Create dest if needed
+# ── Create dest if needed ─────────────────────────────────────────────────────
 if [[ ! -d "$DEST" ]]; then
     echo -e "${YELLOW}  creating $DEST${NC}"
     mkdir -p "$DEST"
 fi
+mkdir -p "$DEST/js" "$DEST/sounds" "$DEST/pkg"
 
-# ── Copy static files with rsync ───────────────────────────────────────────────
-# --checksum        only copy when content differs
-# No --delete: never remove manually-added server-side files
+# ── Deploy: explicit file list, no surprises ──────────────────────────────────
+echo -e "${GREEN}==> Copying frontend files...${NC}"
 
-rsync -av --checksum \
-    --exclude='.git/'             \
-    --exclude='src/'              \
-    --exclude='tests/'            \
-    --exclude='test-results/'     \
-    --exclude='*.sh'              \
-    --exclude='*.md'              \
-    --exclude='*.toml'            \
-    --exclude='*.py'              \
-    --exclude='*.bak'             \
-    --exclude='package.json'      \
-    --exclude='package-lock.json' \
-    --exclude='task.md'           \
-    --exclude='*.txt'             \
-    "$SRC/" "$DEST/"
+# Root static files
+cp index.html style.css "$DEST/"
+
+# JS modules
+cp js/*.js "$DEST/js/"
+
+# Sounds
+cp sounds/*.wav "$DEST/sounds/"
+
+# WASM artefacts (only the two files the browser needs)
+cp pkg/reversi_wasm.js "$DEST/pkg/"
+cp pkg/reversi_wasm_bg.wasm "$DEST/pkg/"
 
 echo
 echo -e "${GREEN}==> Done.${NC}"
